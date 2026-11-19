@@ -56,6 +56,7 @@ function setup() {
 }
 
 const salvar = () => screen.getByRole("button", { name: "Salvar alterações" });
+const semBarra = () => expect(screen.queryByRole("button", { name: "Salvar alterações" })).toBeNull();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -70,11 +71,17 @@ beforeEach(() => {
   mocked.refreshMarket.mockResolvedValue(fixtureMercadoProjecao);
 });
 
-test("Salvar fica desabilitado sem alterações", async () => {
+test("a barra de salvar só existe quando há alterações", async () => {
   setup();
-  await screen.findByLabelText("Custódia B3 (% ao ano)");
-  expect(salvar()).toBeDisabled();
+  const campo = await screen.findByLabelText("Custódia B3 (% ao ano)");
+  semBarra();
   expect(screen.queryByText(/Você tem alterações/)).toBeNull();
+  await userEvent.type(campo, "1");
+  expect(salvar()).toBeEnabled();
+  expect(screen.getByText(/Você tem alterações/)).toBeInTheDocument();
+  await userEvent.clear(campo);
+  await userEvent.type(campo, "0,2");
+  semBarra();
 });
 
 test("editar a custódia para 0,25 envia fração 0.0025 e preserva os demais campos byte a byte", async () => {
@@ -91,7 +98,7 @@ test("editar a custódia para 0,25 envia fração 0.0025 e preserva os demais ca
   await waitFor(() => {
     for (const k of keys) expect(invalidate).toHaveBeenCalledWith({ queryKey: [k] });
   });
-  await waitFor(() => expect(salvar()).toBeDisabled());
+  await waitFor(semBarra);
 });
 
 test("editar alíquota e limite de dias da tabela de IR", async () => {
@@ -234,4 +241,36 @@ test("Dados: última atualização por fonte, erro e Atualizar agora", async () 
   await waitFor(() => expect(mocked.refreshMarket).toHaveBeenCalled());
   await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["market"] }));
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ["simulate"] });
+});
+
+test("modo Manual: explica a regra da última linha e não deixa removê-la", async () => {
+  setup();
+  await userEvent.click(await screen.findByRole("radio", { name: "Manual" }));
+  const remover = await screen.findByRole("button", { name: "Remover linha 1" });
+  expect(remover).toBeDisabled();
+  expect(remover).toHaveAttribute("title", "Informe ao menos um ano");
+  await userEvent.click(screen.getByRole("button", { name: "Adicionar ano" }));
+  expect(screen.getByRole("button", { name: "Remover linha 1" })).toBeEnabled();
+});
+
+test("falha ao carregar o status do mercado mostra alerta na seção Dados", async () => {
+  mocked.market.mockRejectedValue(new ApiError(500, ["Erro 500"]));
+  setup();
+  const dados = await screen.findByRole("region", { name: "Dados" });
+  expect(await within(dados).findByText(/Não foi possível carregar o status dos dados de mercado/)).toBeInTheDocument();
+});
+
+test("falha no refresh ou no reset não aparece como erro de salvamento", async () => {
+  mocked.refreshMarket.mockRejectedValue(new ApiError(502, ["Fonte fora do ar"]));
+  mocked.settings.reset.mockRejectedValue(new ApiError(500, ["Falha ao restaurar"]));
+  setup();
+  const dados = await screen.findByRole("region", { name: "Dados" });
+  await userEvent.click(within(dados).getByRole("button", { name: "Atualizar agora" }));
+  const alerta = await screen.findByRole("alert", { name: "Erro na operação" });
+  expect(within(alerta).getByText("Fonte fora do ar")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Restaurar padrões" }));
+  await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Restaurar" }));
+  expect(await screen.findByText("Falha ao restaurar")).toBeInTheDocument();
+  expect(screen.queryByRole("alert", { name: "Erros ao salvar" })).toBeNull();
+  expect(screen.queryByText(/Não foi possível salvar/)).toBeNull();
 });

@@ -182,6 +182,7 @@ export function Configuracoes() {
 
   const [edited, setEdited] = useState<SettingsForm | null>(null);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
+  const [actionError, setActionError] = useState<string[]>([]);
   const [showIof, setShowIof] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -195,6 +196,7 @@ export function Configuracoes() {
     qc.setQueryData(["settings"], s);
     setEdited(null);
     setServerErrors([]);
+    setActionError([]);
     refreshAll();
   };
 
@@ -202,12 +204,12 @@ export function Configuracoes() {
   const reset = useMutation({
     mutationFn: api.settings.reset,
     onSuccess: (s) => { setConfirmReset(false); adopt(s); },
-    onError: (e) => { setConfirmReset(false); setServerErrors(errMessages(e)); },
+    onError: (e) => { setConfirmReset(false); setActionError(errMessages(e)); },
   });
   const refresh = useMutation({
     mutationFn: api.refreshMarket,
-    onSuccess: refreshAll,
-    onError: (e) => setServerErrors(errMessages(e)),
+    onSuccess: () => { setActionError([]); refreshAll(); },
+    onError: (e) => setActionError(errMessages(e)),
   });
 
   if (settingsQ.isPending) return <p className="py-16 text-center text-sm text-muted">Carregando configurações…</p>;
@@ -259,6 +261,14 @@ export function Configuracoes() {
           Restaurar padrões
         </button>
       </div>
+
+      {actionError.length > 0 && (
+        <div role="alert" aria-label="Erro na operação" className="rounded-xl border border-neg/30 bg-neg-bg px-3 py-2 text-sm text-neg">
+          {actionError.map((m) => (
+            <p key={m}>{m}</p>
+          ))}
+        </div>
+      )}
 
       {top.length > 0 && (
         <div role="alert" aria-label="Erros ao salvar" className="rounded-xl border border-neg/30 bg-neg-bg px-3 py-2 text-sm text-neg">
@@ -403,8 +413,10 @@ export function Configuracoes() {
                     <button
                       type="button"
                       aria-label={`Remover linha ${i + 1}`}
+                      disabled={form.rows.length <= 1}
+                      title={form.rows.length <= 1 ? "Informe ao menos um ano" : undefined}
                       onClick={() => edit({ rows: form.rows.filter((_, j) => j !== i) })}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-neg [&_svg]:h-4 [&_svg]:w-4"
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-neg disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted [&_svg]:h-4 [&_svg]:w-4"
                     >
                       <IconTrash />
                     </button>
@@ -412,6 +424,7 @@ export function Configuracoes() {
                 );
               })}
             </div>
+            {errors.manual_selic_by_year && <p className="mt-1.5 text-xs text-neg">{errors.manual_selic_by_year}</p>}
             {Object.entries(errors).filter(([p]) => /^manual_selic_by_year\.\d+$/.test(p)).map(([p, m]) => (
               <p key={p} className="mt-1.5 text-xs text-neg">Linha {Number(p.split(".")[1]) + 1}: {m}</p>
             ))}
@@ -435,6 +448,11 @@ export function Configuracoes() {
           className="sm:max-w-xs" hint="Depois desse prazo, os dados são buscados de novo automaticamente." />
         <div>
           <SubTitle>Última atualização</SubTitle>
+          {marketQ.isError && (
+            <p role="alert" className="mt-2 rounded-xl border border-warn/30 bg-warn-bg px-3 py-2 text-xs text-warn">
+              Não foi possível carregar o status dos dados de mercado.
+            </p>
+          )}
           <ul className="mt-2 divide-y divide-line rounded-xl border border-line">
             {FONTES.map((f) => {
               const at = market?.fetched_at[f.id];
@@ -465,19 +483,19 @@ export function Configuracoes() {
           className="sm:max-w-xs" hint="Você é avisado quando o valor aplicado em um emissor passa deste limite de proteção do FGC." />
       </Group>
 
-      <div
-        className={`${dirty ? "flex" : "hidden sm:flex"} fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 items-center justify-between gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:sticky sm:bottom-4 sm:rounded-2xl sm:border sm:shadow-card`}
-      >
-        <p className="text-xs text-muted sm:text-sm">{dirty ? <span className="font-medium text-ink">Você tem alterações não salvas.</span> : "Nenhuma alteração pendente."}</p>
-        <button
-          type="button"
-          disabled={!canSave}
-          onClick={() => save.mutate(built.settings)}
-          className="shrink-0 whitespace-nowrap rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:opacity-90 disabled:opacity-50"
-        >
-          {save.isPending ? "Salvando…" : "Salvar alterações"}
-        </button>
-      </div>
+      {dirty && (
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:sticky sm:bottom-4 sm:rounded-2xl sm:border sm:shadow-card">
+          <p className="text-xs text-muted sm:text-sm"><span className="font-medium text-ink">Você tem alterações não salvas.</span></p>
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={() => save.mutate(built.settings)}
+            className="shrink-0 whitespace-nowrap rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:opacity-90 disabled:opacity-50"
+          >
+            {save.isPending ? "Salvando…" : "Salvar alterações"}
+          </button>
+        </div>
+      )}
 
       <ConfirmReset open={confirmReset} pending={reset.isPending} onCancel={() => setConfirmReset(false)} onConfirm={() => reset.mutate()} />
     </div>
