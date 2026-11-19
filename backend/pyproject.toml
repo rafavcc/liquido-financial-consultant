@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2",
     "httpx",
     "bizdays==2.0.0",
+    "pandas>=3.1.1",
 ]
 
 [dependency-groups]

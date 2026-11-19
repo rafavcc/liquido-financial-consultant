@@ -91,3 +91,15 @@ def test_coverage_filled_and_projection_message():
     assert msgs[AlertCode.EXEMPLO] == "Produto fictício (exemplo)"
     assert AlertCode.PROJECAO not in codes(
         CDB(make(indexador=PRE, taxa=D("0.14"))).simulate(D("10000"), date(2033, 1, 1), ctx))
+
+
+def test_non_projection_value_error_propagates(monkeypatch):
+    import pytest
+    from app.domain.products import bank
+
+    def boom(*a, **k):
+        raise ValueError("boom")
+
+    monkeypatch.setattr(bank, "accrual_factor", boom)
+    with pytest.raises(ValueError, match="boom"):
+        CDB(make(data_vencimento=date(2027, 12, 1))).simulate(D("10000"), date(2028, 1, 1), ctx)

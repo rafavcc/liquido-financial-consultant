@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+from app.domain.indexes import ProjecaoIndisponivel
 from app.domain.products.accrual import accrual_factor, needs_index
 from app.domain.products.base import (
     Alert,
@@ -69,11 +70,12 @@ class BankProduct(Product):
 
         try:
             fator = accrual_factor(d.indexador, d.taxa, today, saida, ctx)
-            serie = self._series(valor, saida, ctx)
-        except ValueError:
+            fatores = self._cumulative_factors(saida, ctx)
+        except ProjecaoIndisponivel:
             return self._unavailable(valor, AlertCode.SEM_DADOS_MERCADO, sem_dados, ctx)
 
         bruto = valor * fator
+        serie = [SeriePoint(data=p, valor_bruto=valor * f) for p, f in fatores]
         serie[-1] = SeriePoint(data=saida, valor_bruto=bruto)  # sem deriva de arredondamento
         taxes = apply_taxes(bruto - valor, (saida - today).days, d.tipo, ctx.settings)
         liquido = bruto - taxes.iof - taxes.ir
@@ -94,7 +96,7 @@ class BankProduct(Product):
             serie=serie,
         )
 
-    def _series(self, valor: Decimal, saida: date, ctx: SimContext) -> list[SeriePoint]:
+    def _cumulative_factors(self, saida: date, ctx: SimContext) -> list[tuple[date, Decimal]]:
         d = self.data
         pontos: list[date] = []
         y, m = ctx.today.year, ctx.today.month
@@ -107,13 +109,13 @@ class BankProduct(Product):
             y, m = (y + 1, 1) if m == 12 else (y, m + 1)
         pontos.append(saida)
 
-        serie: list[SeriePoint] = []
+        fatores: list[tuple[date, Decimal]] = []
         anterior, acumulado = ctx.today, Decimal(1)
         for p in pontos:
             acumulado *= accrual_factor(d.indexador, d.taxa, anterior, p, ctx)
-            serie.append(SeriePoint(data=p, valor_bruto=valor * acumulado))
+            fatores.append((p, acumulado))
             anterior = p
-        return serie
+        return fatores
 
 
 class CDB(BankProduct):

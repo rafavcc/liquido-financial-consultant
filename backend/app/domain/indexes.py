@@ -12,6 +12,10 @@ _DAYS_YEAR = D(252)
 _ONE = D(1)
 
 
+class ProjecaoIndisponivel(ValueError):
+    """Projeção de índice indisponível para o cálculo."""
+
+
 class IndexPath:
     """Projeção de Selic/CDI/IPCA: âncoras anuais interpoladas por dia corrido (design 7.4)."""
 
@@ -124,7 +128,7 @@ class IndexPath:
         if monthly is not None:
             return monthly
         if not self._ipca_annual:
-            raise ValueError("sem projeção de IPCA")
+            raise ProjecaoIndisponivel("sem projeção de IPCA")
         annual = self._ipca_annual.get(year)
         if annual is None:
             annual = self._ipca_annual[max(self._ipca_annual)]

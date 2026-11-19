@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from app.domain.indexes import IndexPath
+from app.domain.indexes import IndexPath, ProjecaoIndisponivel
 from app.domain.products.base import Indexer, SimContext
 
 
@@ -16,7 +16,7 @@ def accrual_factor(
         return IndexPath.pre_factor(taxa, start, end)
     index = ctx.index
     if index is None:
-        raise ValueError("sem dados de mercado")
+        raise ProjecaoIndisponivel("sem dados de mercado")
     if indexador == Indexer.PCT_CDI:
         return index.cdi_factor(start, end, pct=taxa)
     if indexador == Indexer.CDI_MAIS:

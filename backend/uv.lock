@@ -359,6 +359,7 @@ dependencies = [
     { name = "bizdays" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "pandas" },
     { name = "pydantic" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -374,6 +375,7 @@ requires-dist = [
     { name = "bizdays", specifier = "==2.0.0" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "pandas", specifier = ">=3.1.1" },
     { name = "pydantic", specifier = ">=2" },
     { name = "uvicorn", extras = ["standard"] },
 ]
