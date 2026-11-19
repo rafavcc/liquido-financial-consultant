@@ -136,6 +136,7 @@ class SimulationResult(BaseModel):
     data_saida: date | None = None
     dias_parado: int = 0
     valor_investido: Decimal = _ZERO
+    sobra: Decimal = _ZERO  # dinheiro não aplicado (fica parado, sem rendimento nem imposto)
     valor_bruto: Decimal | None = None
     iof: Decimal = _ZERO
     ir: Decimal = _ZERO

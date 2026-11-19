@@ -72,3 +72,15 @@ test("código de alerta desconhecido não quebra e mostra a mensagem", () => {
   render(<ProductDetail result={r} mercado={mercado} open onOpenChange={() => {}} />);
   expect(screen.getByText("Aviso novo do servidor")).toBeInTheDocument();
 });
+
+test("sobra do Tesouro aparece na decomposição quando maior que zero", () => {
+  const r = { ...fixtureDetail, sobra: "172.07" };
+  render(<ProductDetail result={r} mercado={mercado} open onOpenChange={() => {}} />);
+  const row = screen.getByText("Sobra não aplicada (fica parada)").closest("tr")!;
+  expect(within(row).getByText("R$ 172,07")).toBeInTheDocument();
+});
+
+test("sem sobra, a linha não aparece", () => {
+  render(<ProductDetail result={fixtureDetail} mercado={mercado} open onOpenChange={() => {}} />);
+  expect(screen.queryByText(/Sobra não aplicada/)).toBeNull();
+});

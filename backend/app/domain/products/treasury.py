@@ -178,6 +178,7 @@ class TreasuryProduct(Product):
 
         qtd = (valor / q.pu_compra).quantize(_CENT, rounding=ROUND_DOWN)
         investido = qtd * q.pu_compra
+        sobra = valor - investido
         all_flows = flows(tipo, d.data_vencimento, today)
         pay_date = {fd: cal.adjust_next(fd) for fd, _ in all_flows}
         pontos = self._series_dates(today, saida, cal)
@@ -224,7 +225,7 @@ class TreasuryProduct(Product):
         custodia = (
             settings.custodia_b3_aa * base * Decimal((saida - today).days) / 365
         ).quantize(_CENT, rounding=ROUND_HALF_EVEN)
-        liquido = bruto - iof - ir - custodia
+        liquido = bruto - iof - ir - custodia + sobra
 
         serie: list[SeriePoint] = []
         for p in pontos[:-1]:
@@ -242,13 +243,14 @@ class TreasuryProduct(Product):
             data_saida=saida,
             dias_parado=dias_parado,
             valor_investido=investido,
+            sobra=sobra,
             valor_bruto=bruto,
             iof=iof,
             ir=ir,
             custodia=custodia,
             valor_liquido=liquido,
-            rentab_liquida=liquido / investido - 1,
-            taxa_liquida_aa=self._net_annual_rate(investido, liquido, today, saida, cal),
+            rentab_liquida=liquido / valor - 1,
+            taxa_liquida_aa=self._net_annual_rate(valor, liquido, today, saida, cal),
             alertas=self._common_alerts(valor, ctx) + extra,
             serie=serie,
         )

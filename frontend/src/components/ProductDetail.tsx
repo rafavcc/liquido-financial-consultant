@@ -33,13 +33,16 @@ const H = ({ children }: { children: React.ReactNode }) => (
 interface Row {
   label: string;
   value: string;
-  tone?: "neg" | "muted";
+  tone?: "neg" | "muted" | "pos";
 }
 
 function Decomposicao({ r }: { r: SimulationResult }) {
   const bruto = subtractMoney(r.valor_bruto ?? "0", r.valor_investido);
   const rows: Row[] = [
     ...(!isZero(bruto) ? [{ label: "Rendimento bruto", value: formatBRL(bruto) }] : []),
+    ...(!isZero(r.sobra)
+      ? [{ label: "Sobra não aplicada (fica parada)", value: formatBRL(r.sobra), tone: "pos" as const }]
+      : []),
     ...(!isZero(r.iof) ? [{ label: "IOF", value: formatBRL(r.iof), tone: "neg" as const }] : []),
     ...(!isZero(r.ir) ? [{ label: "IR", value: formatBRL(r.ir), tone: "neg" as const }] : []),
     ...(!isZero(r.custodia) ? [{ label: "Custódia", value: formatBRL(r.custodia), tone: "neg" as const }] : []),
@@ -58,8 +61,9 @@ function Decomposicao({ r }: { r: SimulationResult }) {
         {rows.map((row) => (
           <tr key={row.label}>
             <th scope="row" className="py-2 text-left font-normal text-muted">{row.label}</th>
-            <td className={`py-2 text-right ${row.tone === "neg" ? "text-neg" : row.tone === "muted" ? "text-muted" : ""}`}>
+            <td className={`py-2 text-right ${row.tone === "neg" ? "text-neg" : row.tone === "pos" ? "text-pos" : row.tone === "muted" ? "text-muted" : ""}`}>
               {row.tone === "neg" && <span aria-hidden="true">− </span>}
+              {row.tone === "pos" && <span aria-hidden="true">+ </span>}
               {row.value}
             </td>
           </tr>

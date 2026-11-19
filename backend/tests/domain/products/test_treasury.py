@@ -66,7 +66,7 @@ def test_ltn_held_to_maturity():
     r = build_treasury(q).simulate(D("10000"), date(2028, 6, 1), ctx)
     assert r.secao == Section.VENCE_ATE_DATA and r.valor_investido == D("11.61") * D("861.32")
     assert r.valor_bruto == D("11610.00") and AlertCode.PROJECAO not in codes(r)
-    assert r.ir > 0 and r.valor_liquido == r.valor_bruto - r.iof - r.ir - r.custodia
+    assert r.ir > 0 and r.valor_liquido == r.valor_bruto - r.iof - r.ir - r.custodia + r.sobra
     assert r.serie[-1].valor_bruto == r.valor_bruto and r.serie[-1].data == r.data_saida
 
 
@@ -146,3 +146,18 @@ def test_expired_quote_is_unavailable_not_a_crash():
     q = q_selic_2029.model_copy(update={"vencimento": date(2026, 11, 10)})
     r = build_treasury(q).simulate(D("10000"), date(2027, 3, 5), ctx)
     assert r.secao == Section.INDISPONIVEL and AlertCode.SEM_DADOS_MERCADO in codes(r)
+
+
+def test_leftover_cash_is_kept_idle_and_counted_in_net_value():
+    # R$ 2.000 em Tesouro Selic (PU 20.310,33): qtd 0,09 -> investe 1.827,93 e sobram 172,07 parados
+    r = build_treasury(q_selic_2029).simulate(D("2000"), date(2026, 12, 10), ctx)
+    assert r.valor_investido == D("0.09") * D("20310.33")
+    assert r.sobra == D("2000") - r.valor_investido and r.sobra > D("172")
+    assert r.valor_liquido == r.valor_bruto - r.iof - r.ir - r.custodia + r.sobra
+    assert r.valor_liquido > D("1990")  # o dinheiro parado não some do total
+    assert r.rentab_liquida == r.valor_liquido / D("2000") - 1
+
+
+def test_no_leftover_when_amount_is_exact_multiple():
+    r = build_treasury(q_ltn_2032).simulate(D("485.38"), date(2028, 6, 1), ctx)
+    assert r.sobra == 0

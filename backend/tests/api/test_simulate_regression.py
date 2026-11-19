@@ -25,8 +25,9 @@ def test_valores_identicos_ao_baseline(client_fixtures, alvo):
     assert set(atual) == set(GOLDEN[alvo])
     for pid, esperado in GOLDEN[alvo].items():
         r = atual[pid]
-        for campo in ("valor_liquido", "valor_bruto"):
-            assert abs(D(r[campo]) - D(esperado[campo])) <= TOL, (pid, campo)
+        # o baseline é anterior à "sobra" do Tesouro, que passou a compor o valor líquido
+        assert abs(D(r["valor_liquido"]) - D(esperado["valor_liquido"]) - D(r["sobra"])) <= TOL, pid
+        assert abs(D(r["valor_bruto"]) - D(esperado["valor_bruto"])) <= TOL, pid
         assert abs(D(r["serie"][-1]["valor_bruto"]) - D(esperado["serie_last"])) <= TOL, pid
 
 

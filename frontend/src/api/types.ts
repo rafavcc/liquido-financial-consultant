@@ -54,6 +54,7 @@ export interface SimulationResult {
   data_saida: string | null;
   dias_parado: number;
   valor_investido: Decimal;
+  sobra: Decimal;
   valor_bruto: Decimal | null;
   iof: Decimal;
   ir: Decimal;
