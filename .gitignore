@@ -1,2 +1,9 @@
 .venv
 .superpowers/
+
+backend/.venv/
+backend/data/
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+*.db
