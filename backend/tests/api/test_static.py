@@ -93,3 +93,14 @@ def test_bare_api_is_json_404(tmp_path):
 
 def test_wrong_method_on_known_route_is_405(tmp_path):
     assert make_client(tmp_path).get("/api/simulate").status_code == 405
+
+
+def test_route_raised_404_detail_is_preserved(tmp_path):
+    c = make_client(tmp_path)
+    body = {"tipo": "CDB", "nome": "X", "emissor": "Y", "plataforma": "Z", "indexador": "PRE", "taxa": "0.1"}
+    r = c.put("/api/products/nao-existe", json=body)
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Produto não encontrado"}
+    r = c.delete("/api/products/nao-existe")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Produto não encontrado"}

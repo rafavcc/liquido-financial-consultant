@@ -38,13 +38,13 @@ def create_app(
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_handler(request: Request, exc: StarletteHTTPException) -> Response:
+        if exc.status_code != 404 or exc.detail != "Not Found":
+            return await http_exception_handler(request, exc)  # 404 levantado por uma rota, 405 etc.
         path = request.url.path
         is_api = path == "/api" or path.startswith("/api/")
         if exc.status_code == 404 and spa is not None and not is_api and request.method in ("GET", "HEAD"):
             return spa(path.lstrip("/"))
-        if exc.status_code == 404:
-            return _not_found()
-        return await http_exception_handler(request, exc)  # 405 etc. seguem o padrão do FastAPI
+        return _not_found()
 
     return app
 
