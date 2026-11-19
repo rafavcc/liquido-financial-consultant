@@ -16,7 +16,21 @@ export function formatPct(fraction: string | null | undefined, digits = 2): stri
   const n = Number(fraction);
   if (!Number.isFinite(n)) return "—";
   const f = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  return `${f.format(n * 100)}%`;
+  const text = f.format(n * 100);
+  // "-0,00" (negativo que arredonda a zero) vira "0,00"; demais negativos usam o sinal de menos tipográfico
+  return `${/[1-9]/.test(text) ? text.replace("-", "−") : text.replace("-", "")}%`;
+}
+
+/** Percentual com sinal explícito: "+13,65%", "−1,93%"; zero (após arredondar) sem sinal. */
+export function formatPctSigned(fraction: string | null | undefined, digits = 2): string {
+  const text = formatPct(fraction, digits);
+  if (text === "—" || text.startsWith("−")) return text;
+  return /[1-9]/.test(text) ? `+${text}` : text;
+}
+
+/** Valor negativo depois de arredondar (evita "−0,00%" em vermelho). */
+export function isNegativePct(fraction: string | null | undefined, digits = 2): boolean {
+  return formatPct(fraction, digits).startsWith("−");
 }
 
 export function formatDate(iso: string | null | undefined): string {

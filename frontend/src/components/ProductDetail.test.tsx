@@ -84,3 +84,10 @@ test("sem sobra, a linha não aparece", () => {
   render(<ProductDetail result={fixtureDetail} mercado={mercado} open onOpenChange={() => {}} />);
   expect(screen.queryByText(/Sobra não aplicada/)).toBeNull();
 });
+
+test("rentabilidade negativa no detalhe usa sinal correto e tom de perda", () => {
+  const r = { ...fixtureDetail, rentab_liquida: "-0.0193", taxa_liquida_aa: "-0.289" };
+  render(<ProductDetail result={r} mercado={mercado} open onOpenChange={() => {}} />);
+  expect(screen.getByText("−1,93%")).toHaveClass("text-neg");
+  expect(screen.getByText("−28,90%")).toHaveClass("text-neg");
+});

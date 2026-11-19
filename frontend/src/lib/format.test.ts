@@ -1,4 +1,4 @@
-import { formatBRL, formatDate, formatPct } from "./format";
+import { formatBRL, formatDate, formatPct, formatPctSigned, isNegativePct } from "./format";
 
 test("formatBRL", () => {
   expect(formatBRL("71840.1")).toBe("R$ 71.840,10");
@@ -13,3 +13,14 @@ test("formatPct", () => {
   expect(formatPct("0.012", 2)).toBe("1,20%");
 });
 test("formatDate", () => expect(formatDate("2029-06-15")).toBe("15/06/2029"));
+
+test("percentuais negativos e com sinal", () => {
+  expect(formatPct("-0.0193")).toBe("−1,93%");
+  expect(formatPct("-0.00001")).toBe("0,00%");
+  expect(formatPctSigned("0.1365")).toBe("+13,65%");
+  expect(formatPctSigned("-0.0193")).toBe("−1,93%");
+  expect(formatPctSigned("0")).toBe("0,00%");
+  expect(isNegativePct("-0.0193")).toBe(true);
+  expect(isNegativePct("-0.00001")).toBe(false);
+  expect(isNegativePct("0.01")).toBe(false);
+});

@@ -2,7 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { lazy, Suspense } from "react";
 import type { MarketSummary, ProductType, SimulationResult } from "../api/types";
 import { subtractMoney } from "../lib/money";
-import { formatBRL, formatDate, formatPct } from "../lib/format";
+import { formatBRL, formatDate, formatPct, formatPctSigned, isNegativePct } from "../lib/format";
 import { ALERT_META, indexLabel, isIsento, resgateLabel, tipoLabel } from "../lib/labels";
 import { TONE } from "./AlertBadge";
 
@@ -93,10 +93,10 @@ function Premissas({ r, mercado }: { r: SimulationResult; mercado: MarketSummary
   );
 }
 
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
+const InfoRow = ({ label, value, negative = false }: { label: string; value: string; negative?: boolean }) => (
   <div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
     <dt className="text-muted">{label}</dt>
-    <dd className="font-medium">{value}</dd>
+    <dd className={`font-medium ${negative ? "text-neg" : ""}`}>{value}</dd>
   </div>
 );
 
@@ -149,8 +149,16 @@ export function ProductDetail({ result: r, mercado, isentoTypes, open, onOpenCha
                   <H>Decomposição</H>
                   <Decomposicao r={r} />
                   <dl className="mt-3 space-y-0.5 rounded-xl bg-subtle px-3 py-2">
-                    <InfoRow label="Rentabilidade líquida" value={formatPct(r.rentab_liquida)} />
-                    <InfoRow label="≈ Taxa líquida a.a." value={formatPct(r.taxa_liquida_aa)} />
+                    <InfoRow
+                      label="Rentabilidade líquida"
+                      value={formatPctSigned(r.rentab_liquida)}
+                      negative={isNegativePct(r.rentab_liquida)}
+                    />
+                    <InfoRow
+                      label="≈ Taxa líquida a.a."
+                      value={formatPct(r.taxa_liquida_aa)}
+                      negative={isNegativePct(r.taxa_liquida_aa)}
+                    />
                   </dl>
                 </section>
 

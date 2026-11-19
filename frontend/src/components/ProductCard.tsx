@@ -1,5 +1,5 @@
 import type { SimulationResult } from "../api/types";
-import { formatBRL, formatDate, formatPct } from "../lib/format";
+import { formatBRL, formatDate, formatPct, formatPctSigned, isNegativePct } from "../lib/format";
 import { indexLabel, isIsento, resgateLabel, tipoLabel } from "../lib/labels";
 import type { ProductType } from "../api/types";
 import { AlertBadge } from "./AlertBadge";
@@ -61,7 +61,11 @@ export function ProductCard({ result, rank, onSelect, isentoTypes }: Props) {
             {formatBRL(result.valor_liquido)}
           </div>
           {result.rentab_liquida !== null && (
-            <div className="mt-0.5 text-xs font-semibold text-pos">+{formatPct(result.rentab_liquida)}</div>
+            <div
+              className={`mt-0.5 text-xs font-semibold ${isNegativePct(result.rentab_liquida) ? "text-neg" : "text-pos"}`}
+            >
+              {formatPctSigned(result.rentab_liquida)}
+            </div>
           )}
         </div>
       </div>

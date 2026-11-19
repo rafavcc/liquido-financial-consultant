@@ -38,3 +38,11 @@ test.each([
 ] as const)("indexLabel %s", (indexador, taxa, esperado) => {
   expect(indexLabel(indexador, taxa)).toBe(esperado);
 });
+
+test("rentabilidade negativa mostra sinal de menos e tom de perda, sem '+'", () => {
+  render(<ProductCard result={{ ...fixtureResult, rentab_liquida: "-0.0193", taxa_liquida_aa: "-0.289" }} rank={1} />);
+  const chip = screen.getByText("−1,93%");
+  expect(chip).toHaveClass("text-neg");
+  expect(screen.queryByText(/\+/)).toBeNull();
+  expect(screen.getByText(/−28,90% a\.a\. líquido/)).toBeInTheDocument();
+});
