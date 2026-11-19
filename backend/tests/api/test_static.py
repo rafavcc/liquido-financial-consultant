@@ -83,3 +83,13 @@ def test_without_static_dir_no_catch_all(tmp_path):
     c = make_client(tmp_path, with_static=False)
     assert c.get("/produtos").status_code == 404
     assert c.get("/api/health").status_code == 200
+
+
+def test_bare_api_is_json_404(tmp_path):
+    r = make_client(tmp_path).get("/api")
+    assert r.status_code == 404
+    assert r.headers["content-type"].startswith("application/json")
+
+
+def test_wrong_method_on_known_route_is_405(tmp_path):
+    assert make_client(tmp_path).get("/api/simulate").status_code == 405

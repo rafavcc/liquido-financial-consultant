@@ -3,7 +3,9 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app.api import format_errors, market, products, settings, simulate
@@ -31,33 +33,37 @@ def create_app(
     for module in (simulate, products, settings, market):
         app.include_router(module.router, prefix="/api")
 
-    @app.api_route(
-        "/api/{rest:path}",
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-        include_in_schema=False,
-    )
-    def api_not_found(rest: str) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": "Não encontrado"})
-
     static_root = app.state.container.static_dir
-    if static_root is not None and static_root.is_dir():
-        _mount_spa(app, static_root.resolve())
+    spa = _spa_responder(static_root.resolve()) if static_root is not None and static_root.is_dir() else None
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_handler(request: Request, exc: StarletteHTTPException) -> Response:
+        path = request.url.path
+        is_api = path == "/api" or path.startswith("/api/")
+        if exc.status_code == 404 and spa is not None and not is_api and request.method in ("GET", "HEAD"):
+            return spa(path.lstrip("/"))
+        if exc.status_code == 404:
+            return _not_found()
+        return await http_exception_handler(request, exc)  # 405 etc. seguem o padrão do FastAPI
+
     return app
 
 
-def _mount_spa(app: FastAPI, root: Path) -> None:
-    index = root / "index.html"
-    not_found = JSONResponse(status_code=404, content={"detail": "Não encontrado"})
+def _not_found() -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": "Não encontrado"})
 
-    @app.get("/{full_path:path}", include_in_schema=False)
-    def spa(full_path: str) -> Response:
+
+def _spa_responder(root: Path) -> Callable[[str], Response]:
+    index = root / "index.html"
+
+    def respond(full_path: str) -> Response:
         if "\x00" in full_path:
-            return not_found
+            return _not_found()
         try:
             candidate = (root / full_path).resolve()
             is_file = candidate.is_file() and candidate.is_relative_to(root)
         except (OSError, ValueError):
-            return not_found
+            return _not_found()
         if is_file:
             # arquivos com hash em /assets nunca mudam; sw.js e index.html precisam ser revalidados
             if candidate.relative_to(root).parts[0] == "assets":
@@ -67,8 +73,10 @@ def _mount_spa(app: FastAPI, root: Path) -> None:
             return FileResponse(candidate, headers={"Cache-Control": cache})
         if full_path.startswith("assets/"):
             # chunk antigo após um deploy: falha limpa em vez de devolver HTML como JS
-            return not_found
+            return _not_found()
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+    return respond
 
 
 app = create_app()
