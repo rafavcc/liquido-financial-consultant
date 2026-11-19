@@ -11,6 +11,19 @@ const monthYear = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const compact = (n: number) =>
   new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
+/** Passo "redondo" (1, 2, 2.5 ou 5 × 10^k) para ~5 divisões; devolve domínio alinhado e ticks. */
+export function niceScale(min: number, max: number, target = 5): { domain: [number, number]; ticks: number[] } {
+  const span = max - min || Math.abs(max) * 0.02 || 1;
+  const raw = span / target;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = ([1, 2, 2.5, 5, 10].find((m) => m * pow >= raw) ?? 10) * pow;
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  const ticks: number[] = [];
+  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v * 100) / 100);
+  return { domain: [lo, hi], ticks };
+}
+
 interface Props {
   serie: SeriePoint[];
 }
@@ -21,7 +34,7 @@ export function EvolutionChart({ serie }: Props) {
   const data = serie.map((p) => ({ data: p.data, valor: Number(p.valor_bruto) }));
   const min = Math.min(...data.map((d) => d.valor));
   const max = Math.max(...data.map((d) => d.valor));
-  const pad = (max - min) * 0.08 || max * 0.02;
+  const { domain, ticks } = niceScale(min, max);
 
   return (
     <div
@@ -47,7 +60,8 @@ export function EvolutionChart({ serie }: Props) {
             minTickGap={36}
           />
           <YAxis
-            domain={[min - pad, max + pad]}
+            domain={domain}
+            ticks={ticks}
             tickFormatter={compact}
             tick={{ fill: MUTED, fontSize: 11 }}
             tickLine={false}

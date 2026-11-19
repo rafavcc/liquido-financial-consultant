@@ -104,7 +104,6 @@ export function Comparador() {
   const vermelhos = useMemo(() => applyFilters(data?.vence_depois ?? [], filters, isentos), [data, filters, isentos]);
   const cinzas = useMemo(() => applyFilters(data?.indisponiveis ?? [], filters, isentos), [data, filters, isentos]);
 
-  const select = setSelected;
 
   const erroValidacao =
     valorNum === null || Number(valorNum) <= 0
@@ -168,7 +167,7 @@ export function Comparador() {
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {verdes.map((r, i) => (
-                  <ProductCard key={r.product.id} result={r} rank={i + 1} onSelect={select} isentoTypes={isentos} />
+                  <ProductCard key={r.product.id} result={r} rank={i + 1} onSelect={setSelected} isentoTypes={isentos} />
                 ))}
               </div>
             )}
@@ -186,7 +185,7 @@ export function Comparador() {
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {vermelhos.map((r) => (
-                  <ProductCard key={r.product.id} result={r} onSelect={select} isentoTypes={isentos} />
+                  <ProductCard key={r.product.id} result={r} onSelect={setSelected} isentoTypes={isentos} />
                 ))}
               </div>
             )}
@@ -213,7 +212,7 @@ export function Comparador() {
               {showOff && (
                 <div className="grid gap-3 md:grid-cols-2">
                   {cinzas.map((r) => (
-                    <ProductCard key={r.product.id} result={r} onSelect={select} isentoTypes={isentos} />
+                    <ProductCard key={r.product.id} result={r} onSelect={setSelected} isentoTypes={isentos} />
                   ))}
                 </div>
               )}
@@ -226,6 +225,7 @@ export function Comparador() {
         <ProductDetail
           result={selected}
           mercado={mercado}
+          isentoTypes={isentos}
           open
           onOpenChange={(o) => {
             if (!o) setSelected(null);

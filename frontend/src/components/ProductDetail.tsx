@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import type { MarketSummary, SimulationResult } from "../api/types";
+import type { MarketSummary, ProductType, SimulationResult } from "../api/types";
+import { subtractMoney } from "../lib/money";
 import { formatBRL, formatDate, formatPct } from "../lib/format";
 import { ALERT_META, indexLabel, isIsento, resgateLabel, tipoLabel } from "../lib/labels";
 import { TONE } from "./AlertBadge";
@@ -8,10 +9,12 @@ import { EvolutionChart } from "./EvolutionChart";
 interface Props {
   result: SimulationResult;
   mercado: MarketSummary;
+  isentoTypes?: ProductType[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+const FALLBACK_META = { icon: "ℹ️", text: "", tone: "info" as const };
 const isZero = (v: string) => Number(v) === 0;
 
 function isoToday(): string {
@@ -31,9 +34,9 @@ interface Row {
 }
 
 function Decomposicao({ r }: { r: SimulationResult }) {
-  const bruto = Number(r.valor_bruto) - Number(r.valor_investido);
+  const bruto = subtractMoney(r.valor_bruto ?? "0", r.valor_investido);
   const rows: Row[] = [
-    { label: "Rendimento bruto", value: formatBRL(String(bruto)) },
+    ...(!isZero(bruto) ? [{ label: "Rendimento bruto", value: formatBRL(bruto) }] : []),
     ...(!isZero(r.iof) ? [{ label: "IOF", value: formatBRL(r.iof), tone: "neg" as const }] : []),
     ...(!isZero(r.ir) ? [{ label: "IR", value: formatBRL(r.ir), tone: "neg" as const }] : []),
     ...(!isZero(r.custodia) ? [{ label: "Custódia", value: formatBRL(r.custodia), tone: "neg" as const }] : []),
@@ -83,14 +86,14 @@ function Premissas({ r, mercado }: { r: SimulationResult; mercado: MarketSummary
   );
 }
 
-const DateRow = ({ label, value }: { label: string; value: string }) => (
+const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
     <dt className="text-muted">{label}</dt>
     <dd className="font-medium">{value}</dd>
   </div>
 );
 
-export function ProductDetail({ result: r, mercado, open, onOpenChange }: Props) {
+export function ProductDetail({ result: r, mercado, isentoTypes, open, onOpenChange }: Props) {
   const p = r.product;
   const calculado = r.valor_liquido !== null && r.valor_bruto !== null;
   const dn = resgateLabel(p);
@@ -118,7 +121,7 @@ export function ProductDetail({ result: r, mercado, open, onOpenChange }: Props)
                 {p.data_vencimento && ` · Vence ${formatDate(p.data_vencimento)}`}
               </Dialog.Description>
               <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium">
-                {isIsento(p.tipo) && <span className="rounded-md bg-pos-bg px-1.5 py-0.5 text-pos">Isento de IR</span>}
+                {isIsento(p.tipo, isentoTypes) && <span className="rounded-md bg-pos-bg px-1.5 py-0.5 text-pos">Isento de IR</span>}
                 {p.cobertura === "FGC" && <span className="rounded-md bg-subtle px-1.5 py-0.5 text-muted">FGC</span>}
               </div>
             </div>
@@ -139,8 +142,8 @@ export function ProductDetail({ result: r, mercado, open, onOpenChange }: Props)
                   <H>Decomposição</H>
                   <Decomposicao r={r} />
                   <dl className="mt-3 space-y-0.5 rounded-xl bg-subtle px-3 py-2">
-                    <DateRow label="Rentabilidade líquida" value={formatPct(r.rentab_liquida)} />
-                    <DateRow label="≈ Taxa líquida a.a." value={formatPct(r.taxa_liquida_aa)} />
+                    <InfoRow label="Rentabilidade líquida" value={formatPct(r.rentab_liquida)} />
+                    <InfoRow label="≈ Taxa líquida a.a." value={formatPct(r.taxa_liquida_aa)} />
                   </dl>
                 </section>
 
@@ -158,7 +161,7 @@ export function ProductDetail({ result: r, mercado, open, onOpenChange }: Props)
                 <H>Alertas</H>
                 <ul className="space-y-2">
                   {r.alertas.map((a) => {
-                    const meta = ALERT_META[a.code];
+                    const meta = ALERT_META[a.code] ?? FALLBACK_META;
                     return (
                       <li key={a.code} className={`flex items-start gap-2 rounded-xl px-3 py-2 text-sm ${TONE[meta.tone]}`}>
                         <span aria-hidden="true">{meta.icon}</span>
@@ -173,10 +176,10 @@ export function ProductDetail({ result: r, mercado, open, onOpenChange }: Props)
             <section aria-label="Datas">
               <H>Datas</H>
               <dl className="divide-y divide-line">
-                <DateRow label="Aplicação" value={formatDate(isoToday())} />
-                {r.data_saida && <DateRow label="Saída" value={formatDate(r.data_saida)} />}
-                {solicitar && <DateRow label="Solicitar resgate até" value={formatDate(solicitar)} />}
-                {r.dias_parado > 0 && <DateRow label="Dias parados" value={String(r.dias_parado)} />}
+                <InfoRow label="Aplicação" value={formatDate(isoToday())} />
+                {r.data_saida && <InfoRow label="Saída" value={formatDate(r.data_saida)} />}
+                {solicitar && <InfoRow label="Solicitar resgate até" value={formatDate(solicitar)} />}
+                {r.dias_parado > 0 && <InfoRow label="Dias parados" value={String(r.dias_parado)} />}
               </dl>
             </section>
 

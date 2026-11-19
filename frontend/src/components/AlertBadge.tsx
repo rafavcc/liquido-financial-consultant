@@ -12,7 +12,7 @@ export const TONE: Record<AlertTone, string> = {
 const SHOW_MESSAGE = new Set(["RESGATE_DN", "PARADO"]);
 
 export function AlertBadge({ alert }: { alert: Alert }) {
-  const meta = ALERT_META[alert.code];
+  const meta = ALERT_META[alert.code] ?? { icon: "ℹ️", text: alert.message, tone: "info" as const };
   const text = SHOW_MESSAGE.has(alert.code) ? alert.message : meta.text;
   return (
     <span

@@ -50,3 +50,25 @@ test("Escape fecha o detalhe", async () => {
   await userEvent.keyboard("{Escape}");
   expect(onOpenChange).toHaveBeenCalledWith(false);
 });
+
+test("Rendimento bruto zerado é omitido", () => {
+  const zero = { ...fixtureDetail, valor_bruto: "10000", valor_liquido: "10000" };
+  render(<ProductDetail result={zero} mercado={mercado} open onOpenChange={() => {}} />);
+  expect(screen.queryByText("Rendimento bruto")).toBeNull();
+  expect(screen.getByText("Valor líquido")).toBeInTheDocument();
+});
+
+test("chip Isento de IR segue a lista isentos recebida", () => {
+  const { rerender } = render(
+    <ProductDetail result={fixtureDetail} mercado={mercado} open onOpenChange={() => {}} isentoTypes={["CDB"]} />,
+  );
+  expect(screen.getByText("Isento de IR")).toBeInTheDocument();
+  rerender(<ProductDetail result={fixtureDetail} mercado={mercado} open onOpenChange={() => {}} isentoTypes={["LCI"]} />);
+  expect(screen.queryByText("Isento de IR")).toBeNull();
+});
+
+test("código de alerta desconhecido não quebra e mostra a mensagem", () => {
+  const r = { ...fixtureDetail, alertas: [{ code: "NOVO" as never, message: "Aviso novo do servidor" }] };
+  render(<ProductDetail result={r} mercado={mercado} open onOpenChange={() => {}} />);
+  expect(screen.getByText("Aviso novo do servidor")).toBeInTheDocument();
+});
