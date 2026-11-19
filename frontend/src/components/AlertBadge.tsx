@@ -1,7 +1,7 @@
 import type { Alert } from "../api/types";
 import { ALERT_META, type AlertTone } from "../lib/labels";
 
-const TONE: Record<AlertTone, string> = {
+export const TONE: Record<AlertTone, string> = {
   warn: "bg-warn-bg text-warn",
   neg: "bg-neg-bg text-neg",
   off: "bg-off-bg text-off",

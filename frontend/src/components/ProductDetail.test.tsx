@@ -1,0 +1,52 @@
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { cloneElement } from "react";
+import { ProductDetail } from "./ProductDetail";
+import { fixtureDetail, fixtureMercadoProjecao, fixtureResponse } from "../test/fixtures";
+
+// jsdom não tem layout: o ResponsiveContainer recebe tamanho fixo para não emitir avisos.
+vi.mock("recharts", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("recharts")>();
+  const Fixed = ({ children }: { children: React.ReactElement }) =>
+    cloneElement(children, { width: 400, height: 200 } as object);
+  return { ...mod, ResponsiveContainer: Fixed };
+});
+
+const mercado = fixtureMercadoProjecao;
+
+test("detalhe mostra IR, omite IOF zerado e traz Premissas", () => {
+  render(<ProductDetail result={fixtureDetail} mercado={mercado} open onOpenChange={() => {}} />);
+  const dialog = screen.getByRole("dialog", { name: "CDB Banco Alfa" });
+  const ir = within(dialog).getByText("IR").closest("tr")!;
+  expect(within(ir).getByText("R$ 264,42")).toBeInTheDocument();
+  expect(within(dialog).queryByText("IOF")).toBeNull();
+  expect(within(dialog).getByRole("heading", { name: "Premissas" })).toBeInTheDocument();
+  expect(within(dialog).getByText(/Focus 13\/11\/2026 — Selic 12,75% em 2027/)).toBeInTheDocument();
+  expect(within(dialog).getByText("R$ 11.498,38")).toBeInTheDocument();
+  expect(within(dialog).getByText("Solicitar resgate até")).toBeInTheDocument();
+});
+
+test("produto sem alerta de projeção mostra rentabilidade prefixada", () => {
+  const pre = { ...fixtureDetail, alertas: [] };
+  render(<ProductDetail result={pre} mercado={mercado} open onOpenChange={() => {}} />);
+  expect(screen.getByText(/sem dependência de projeção/)).toBeInTheDocument();
+});
+
+test("resultado indisponível mostra alertas e não mostra decomposição", () => {
+  const off = {
+    ...fixtureDetail, secao: "INDISPONIVEL" as const, resgatavel: false, valor_bruto: null, valor_liquido: null,
+    rentab_liquida: null, taxa_liquida_aa: null, serie: [],
+    alertas: [{ code: "ABAIXO_MINIMO" as const, message: "Valor abaixo do mínimo de R$ 100.000,00" }],
+  };
+  render(<ProductDetail result={off} mercado={fixtureResponse.mercado} open onOpenChange={() => {}} />);
+  expect(screen.getByText(/abaixo do mínimo de R\$ 100\.000,00/)).toBeInTheDocument();
+  expect(screen.getByText(/não há valor calculado/i)).toBeInTheDocument();
+  expect(screen.queryByText("Rendimento bruto")).toBeNull();
+});
+
+test("Escape fecha o detalhe", async () => {
+  const onOpenChange = vi.fn();
+  render(<ProductDetail result={fixtureDetail} mercado={mercado} open onOpenChange={onOpenChange} />);
+  await userEvent.keyboard("{Escape}");
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+});

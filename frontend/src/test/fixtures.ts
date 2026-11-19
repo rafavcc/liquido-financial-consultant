@@ -1,4 +1,4 @@
-import type { SimulationResponse, SimulationResult } from "../api/types";
+import type { MarketSummary, SimulationResponse, SimulationResult } from "../api/types";
 
 export const fixtureResult: SimulationResult = {
   product: {
@@ -23,4 +23,33 @@ export const fixtureResponse: SimulationResponse = {
     selic_meta: "0.1375", cdi_aa: "0.1365", ipca_12m: "0.0463", ipca_12m_ref: "2026-10-01",
     fonte_projecao: null, projecao: [], fetched_at: {}, errors: {}, tesouro_data_base: null,
   },
+};
+
+/** CDB curto, sem IOF e com IR de R$ 264,42, com série para o gráfico. */
+export const fixtureDetail: SimulationResult = {
+  ...fixtureResult,
+  data_saida: "2027-11-17",
+  dias_parado: 2,
+  data_solicitacao_resgate: "2027-11-15",
+  valor_investido: "10000",
+  valor_bruto: "11762.80",
+  iof: "0.00",
+  ir: "264.42",
+  valor_liquido: "11498.38",
+  rentab_liquida: "0.1498",
+  taxa_liquida_aa: "0.1498",
+  serie: [
+    { data: "2026-11-19", valor_bruto: "10000" },
+    { data: "2027-05-19", valor_bruto: "10850.40" },
+    { data: "2027-11-17", valor_bruto: "11762.80" },
+  ],
+};
+
+export const fixtureMercadoProjecao: MarketSummary = {
+  ...fixtureResponse.mercado,
+  fonte_projecao: "Focus 13/11/2026",
+  projecao: [
+    { ano: 2027, selic: "0.1275", ipca: "0.0490" },
+    { ano: 2028, selic: "0.1100", ipca: "0.0400" },
+  ],
 };

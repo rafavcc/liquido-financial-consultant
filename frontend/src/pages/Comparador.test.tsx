@@ -51,3 +51,11 @@ test("apagar o valor esconde os cards e mostra a validação", async () => {
   await waitFor(() => expect(screen.queryByText("CDB Banco Alfa")).toBeNull(), { timeout: 2000 });
   expect(screen.getByText("Informe um valor maior que zero.")).toBeInTheDocument();
 });
+
+test("clicar no card abre o detalhe e Escape fecha", async () => {
+  setup();
+  await userEvent.click(await screen.findByRole("button", { name: "CDB Banco Alfa" }));
+  expect(await screen.findByRole("dialog", { name: "CDB Banco Alfa" })).toBeInTheDocument();
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});

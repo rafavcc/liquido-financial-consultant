@@ -7,6 +7,7 @@ import { IconChevron } from "../components/Icons";
 import { InputsBar } from "../components/InputsBar";
 import { MarketStrip } from "../components/MarketStrip";
 import { ProductCard } from "../components/ProductCard";
+import { ProductDetail } from "../components/ProductDetail";
 import { SectionHeader } from "../components/SectionHeader";
 import { formatDate, maskBRL } from "../lib/format";
 import { ISENTOS_PADRAO, isIsento, tipoGrupo } from "../lib/labels";
@@ -42,16 +43,13 @@ const Empty = ({ children }: { children: React.ReactNode }) => (
   <p className="rounded-2xl border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{children}</p>
 );
 
-interface Props {
-  onSelect?: (result: SimulationResult) => void;
-}
-
-export function Comparador({ onSelect }: Props) {
+export function Comparador() {
   const qc = useQueryClient();
   const [valor, setValor] = useState(() => readStore(K_VALOR) ?? "50.000");
   const [dataAlvo, setDataAlvo] = useState(() => readStore(K_DATA) ?? isoDate(addDays(new Date(), 365 * 3)));
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [showOff, setShowOff] = useState(false);
+  const [selected, setSelected] = useState<SimulationResult | null>(null);
 
   const hoje = isoDate(new Date());
   const amanha = isoDate(addDays(new Date(), 1));
@@ -106,7 +104,7 @@ export function Comparador({ onSelect }: Props) {
   const vermelhos = useMemo(() => applyFilters(data?.vence_depois ?? [], filters, isentos), [data, filters, isentos]);
   const cinzas = useMemo(() => applyFilters(data?.indisponiveis ?? [], filters, isentos), [data, filters, isentos]);
 
-  const select = (r: SimulationResult) => onSelect?.(r);
+  const select = setSelected;
 
   const erroValidacao =
     valorNum === null || Number(valorNum) <= 0
@@ -222,6 +220,17 @@ export function Comparador({ onSelect }: Props) {
             </section>
           )}
         </div>
+      )}
+
+      {selected && mercado && (
+        <ProductDetail
+          result={selected}
+          mercado={mercado}
+          open
+          onOpenChange={(o) => {
+            if (!o) setSelected(null);
+          }}
+        />
       )}
     </div>
   );
