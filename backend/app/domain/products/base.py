@@ -223,3 +223,18 @@ class Product(ABC):
         if du == 0 or valor <= 0:
             return None
         return (liquido / valor) ** (Decimal(252) / Decimal(du)) - 1
+
+    @staticmethod
+    def _series_dates(start: date, end: date, cal: BusinessCalendar) -> list[date]:
+        """Último dia útil de cada mês em (start, end) e, ao final, `end`."""
+        pontos: list[date] = []
+        y, m = start.year, start.month
+        while True:
+            eom = cal.last_business_day_of_month(y, m)
+            if eom >= end:
+                break
+            if eom > start:
+                pontos.append(eom)
+            y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+        pontos.append(end)
+        return pontos

@@ -98,16 +98,7 @@ class BankProduct(Product):
 
     def _cumulative_factors(self, saida: date, ctx: SimContext) -> list[tuple[date, Decimal]]:
         d = self.data
-        pontos: list[date] = []
-        y, m = ctx.today.year, ctx.today.month
-        while True:
-            eom = ctx.cal.last_business_day_of_month(y, m)
-            if eom >= saida:
-                break
-            if eom > ctx.today:
-                pontos.append(eom)
-            y, m = (y + 1, 1) if m == 12 else (y, m + 1)
-        pontos.append(saida)
+        pontos = self._series_dates(ctx.today, saida, ctx.cal)
 
         fatores: list[tuple[date, Decimal]] = []
         anterior, acumulado = ctx.today, Decimal(1)
