@@ -1,6 +1,7 @@
+import logging
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import quote
@@ -12,6 +13,8 @@ from pydantic_core import to_jsonable_python
 from app.data import bcb, focus, tesouro
 from app.data.repositories import MarketCacheRepository
 from app.data.tesouro import TesouroQuote
+
+log = logging.getLogger(__name__)
 
 FAILURE_COOLDOWN = timedelta(minutes=15)
 HTTP_TIMEOUT = httpx.Timeout(15.0)
@@ -55,6 +58,7 @@ def sgs_url(codigo: int, today: date) -> str:
 
 class MarketSnapshot(BaseModel):
     selic_meta: Decimal | None = None
+    selic_meta_data: date | None = None
     ipca_12m: Decimal | None = None
     ipca_12m_ref: date | None = None
     focus_data: date | None = None
@@ -85,6 +89,7 @@ def build_bcb(sgs_432: str, sgs_13522: str, today: date) -> dict:
     ipca = bcb.latest_until(bcb.parse_sgs(sgs_13522), today)
     return {
         "selic_meta": selic.valor / 100,
+        "selic_meta_data": selic.data,
         "ipca_12m": ipca.valor / 100,
         "ipca_12m_ref": ipca.data,
     }
@@ -163,6 +168,19 @@ class FixtureFetchers:
         return build_tesouro(self._read("tesouro"))
 
 
+def describe_error(exc: Exception) -> str:
+    """Mensagem curta em pt-BR para a UI; o texto cru da exceção fica só nos logs."""
+    if isinstance(exc, httpx.TimeoutException):
+        return "Tempo esgotado"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"A fonte respondeu com erro ({exc.response.status_code})"
+    if isinstance(exc, httpx.TransportError):
+        return "Sem conexão com a fonte"
+    if isinstance(exc, (ValueError, KeyError, TypeError, InvalidOperation)):  # inclui JSONDecodeError
+        return "Resposta inválida da fonte"
+    return "Erro inesperado ao atualizar"
+
+
 class MarketService:
     def __init__(
         self,
@@ -210,7 +228,8 @@ class MarketService:
                     stamp = now
                     self._cache.save(source, payload, now)
                 except Exception as exc:  # noqa: BLE001 - qualquer falha de fonte vira erro registrado
-                    message = f"{type(exc).__name__}: {exc}"
+                    log.warning("Falha ao atualizar a fonte %s: %s: %s", source, type(exc).__name__, exc)
+                    message = describe_error(exc)
                     self._cache.save_error(source, message, now)
                     errors[source] = message
             if payload is not None:

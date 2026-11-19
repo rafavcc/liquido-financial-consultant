@@ -3,6 +3,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { api, ApiError } from "../api/client";
 import type { ProjecaoAno } from "../api/types";
 import { formatDate, formatPct } from "../lib/format";
+import { refMonth, staleMessage } from "../lib/market";
 
 // Cores via variáveis CSS (canais RGB) para acompanhar o tema claro/escuro.
 const SELIC = "rgb(var(--accent))";
@@ -10,8 +11,6 @@ const IPCA = "rgb(var(--warn))";
 const LINE = "rgb(var(--line))";
 const MUTED = "rgb(var(--muted))";
 
-const FONTES: Record<string, string> = { bcb: "Banco Central", focus: "Boletim Focus", tesouro: "Tesouro Direto" };
-const refMonth = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const pctAxis = (n: number) => `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(n)}%`;
 
 function Indicator({ label, value, note }: { label: string; value: string; note: string }) {
@@ -71,13 +70,13 @@ export function Mercado() {
 
       {Object.entries(m.errors).map(([source, msg]) => (
         <div key={source} role="alert" className="rounded-xl border border-warn/30 bg-warn-bg px-3 py-2 text-xs text-warn">
-          <strong className="font-semibold">Falha ao atualizar {FONTES[source] ?? source}.</strong> <span className="opacity-90">{msg}</span>
+          {staleMessage(source, msg, m.fetched_at[source])}
         </div>
       ))}
 
       <section aria-label="Indicadores" className="grid gap-3 sm:grid-cols-3">
-        <Indicator label="Selic meta" value={formatPct(m.selic_meta)} note="Taxa básica de juros, ao ano" />
-        <Indicator label="CDI" value={formatPct(m.cdi_aa)} note="Referência dos CDBs, ao ano" />
+        <Indicator label="Selic meta" value={formatPct(m.selic_meta)} note={m.selic_meta_data ? `Taxa básica de juros, ao ano · em ${formatDate(m.selic_meta_data)}` : "Taxa básica de juros, ao ano"} />
+        <Indicator label="CDI" value={formatPct(m.cdi_aa)} note={m.selic_meta_data ? `Referência dos CDBs, ao ano · em ${formatDate(m.selic_meta_data)}` : "Referência dos CDBs, ao ano"} />
         <Indicator label="IPCA 12 meses" value={formatPct(m.ipca_12m)} note={m.ipca_12m_ref ? `Inflação acumulada, ref. ${refMonth(m.ipca_12m_ref)}` : "Inflação acumulada"} />
       </section>
 

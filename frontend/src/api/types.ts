@@ -77,6 +77,7 @@ export interface ProjecaoAno {
 
 export interface MarketSummary {
   selic_meta: Decimal | null;
+  selic_meta_data: string | null;
   cdi_aa: Decimal | null;
   ipca_12m: Decimal | null;
   ipca_12m_ref: string | null;

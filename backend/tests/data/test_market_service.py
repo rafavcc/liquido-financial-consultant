@@ -83,7 +83,8 @@ def test_failure_keeps_previous_payload_and_records_error(env):
     f.fail.add("focus")
     snap = svc.get_snapshot(6)
     assert snap.focus_selic_anual == first.focus_selic_anual
-    assert "focus" in snap.errors and "fora do ar" in snap.errors["focus"]
+    assert snap.errors["focus"] == "Erro inesperado ao atualizar"  # pt-BR, sem texto cru da exceção
+    assert "fora do ar" not in snap.errors["focus"]
     assert snap.fetched_at["focus"] == T0  # carimbo antigo preservado
     assert snap.fetched_at["bcb"] == clock.t and "bcb" not in snap.errors
     # dentro do cooldown a fonte que falhou não é tentada de novo, mas o erro continua visível
@@ -138,3 +139,46 @@ def test_all_sources_down_equals_empty_plus_errors(env):
 def test_empty_snapshot():
     s = MarketSnapshot.empty()
     assert s.selic_meta is None and s.focus_selic_anual == {} and s.tesouro == [] and s.errors == {}
+
+
+def test_error_messages_are_ptbr_and_raw_text_only_goes_to_the_log(env, caplog):
+    import json
+
+    import httpx
+
+    svc, f, _ = env
+    cases = {
+        "bcb": httpx.ConnectError("[Errno -3] Temporary failure in name resolution"),
+        "focus": httpx.ReadTimeout("timed out"),
+        "tesouro": json.JSONDecodeError("Expecting value", "", 0),
+    }
+
+    def boom(name):
+        def _raise(*_a):
+            raise cases[name]
+        return _raise
+
+    f.inner.fetch_bcb, f.inner.fetch_focus, f.inner.fetch_tesouro = boom("bcb"), boom("focus"), boom("tesouro")
+    snap = svc.get_snapshot(6)
+    assert snap.errors == {
+        "bcb": "Sem conexão com a fonte",
+        "focus": "Tempo esgotado",
+        "tesouro": "Resposta inválida da fonte",
+    }
+    assert "Temporary failure" in caplog.text  # o texto cru fica nos logs
+
+
+def test_http_status_error_is_ptbr():
+    import httpx
+
+    from app.data.market import describe_error
+
+    resp = httpx.Response(503, request=httpx.Request("GET", "https://x"))
+    exc = httpx.HTTPStatusError("503", request=resp.request, response=resp)
+    assert describe_error(exc) == "A fonte respondeu com erro (503)"
+
+
+def test_selic_meta_date_is_exposed(env):
+    svc, _, _ = env
+    snap = svc.get_snapshot(6)
+    assert snap.selic_meta_data is not None and snap.selic_meta_data <= date(2026, 11, 19)

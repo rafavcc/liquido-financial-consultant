@@ -20,7 +20,7 @@ export const fixtureResponse: SimulationResponse = {
   vence_depois: [],
   indisponiveis: [],
   mercado: {
-    selic_meta: "0.1375", cdi_aa: "0.1365", ipca_12m: "0.0463", ipca_12m_ref: "2026-10-01",
+    selic_meta: "0.1375", selic_meta_data: "2026-11-05", cdi_aa: "0.1365", ipca_12m: "0.0463", ipca_12m_ref: "2026-10-01",
     fonte_projecao: null, projecao: [], fetched_at: {}, errors: {}, tesouro_data_base: null,
   },
 };

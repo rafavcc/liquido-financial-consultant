@@ -20,6 +20,7 @@ class ProjecaoRow(BaseModel):
 
 class MarketSummary(BaseModel):
     selic_meta: Decimal | None
+    selic_meta_data: date | None = None
     cdi_aa: Decimal | None
     ipca_12m: Decimal | None
     ipca_12m_ref: date | None
@@ -75,6 +76,7 @@ def build_market_summary(snapshot: MarketSnapshot, ctx: SimContext) -> MarketSum
     selic = snapshot.selic_meta
     return MarketSummary(
         selic_meta=selic,
+        selic_meta_data=snapshot.selic_meta_data,
         cdi_aa=None if selic is None else selic - ctx.settings.spread_cdi_selic,
         ipca_12m=snapshot.ipca_12m,
         ipca_12m_ref=snapshot.ipca_12m_ref,

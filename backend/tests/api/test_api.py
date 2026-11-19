@@ -40,6 +40,7 @@ def test_api_simulate_offline(client_fixtures):
     m = body["mercado"]
     assert D(m["cdi_aa"]) == D(m["selic_meta"]) - D("0.0010")
     assert m["fonte_projecao"].startswith("Focus") and m["projecao"]
+    assert m["selic_meta_data"] is not None and m["selic_meta_data"] <= TODAY.isoformat()
 
 
 def test_api_validation(client_fixtures):
