@@ -45,3 +45,16 @@ def test_tesouro_drops_rows_with_empty_rate_or_pu():
         "0,05;0,06;20310,33", "0,05;0,06;"
     )
     assert parse_latest(csv_text) == []
+
+
+def test_tesouro_skips_malformed_rows_instead_of_failing_the_whole_fetch():
+    csv_text = TESOURO_CSV + (
+        "\nTesouro Selic;99/99/9999;18/11/2026;0,05;0,06;20310,33;1;1"
+        "\nTesouro Selic;01/03/2031;18/11/2026;abc;0,06;20310,33;1;1"
+    )
+    assert [x.tipo for x in parse_latest(csv_text)] == ["Tesouro Prefixado", "Tesouro Selic"]
+
+
+def test_tesouro_ignores_row_with_malformed_data_base():
+    csv_text = TESOURO_CSV + "\nTesouro Selic;01/03/2031;xx/yy;0,05;0,06;20310,33;1;1"
+    assert len(parse_latest(csv_text)) == 2

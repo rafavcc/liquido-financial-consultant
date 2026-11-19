@@ -38,4 +38,10 @@ class TesouroSource:
     name = "tesouro"
 
     def load(self, ctx: SimContext, snapshot: MarketSnapshot) -> list[Product]:
-        return [build_treasury(q) for q in snapshot.tesouro]
+        out: list[Product] = []
+        for q in snapshot.tesouro:
+            try:
+                out.append(build_treasury(q))
+            except Exception:  # noqa: BLE001 - tipo novo ou cotação inválida não derruba a simulação
+                log.exception("Título do Tesouro desconhecido ou inválido ignorado: %s %s", q.tipo, q.vencimento)
+        return out
