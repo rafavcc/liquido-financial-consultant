@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 EXCLUDED_TYPES = {"Tesouro IGPM+ com Juros Semestrais"}
 
+NUMERIC_COLUMNS = ("Taxa Compra Manha", "Taxa Venda Manha", "PU Compra Manha", "PU Venda Manha")
+
 
 class TesouroQuote(BaseModel):
     tipo: str
@@ -30,8 +32,7 @@ def _date(text: str) -> date:
 
 
 def _num(text: str) -> Decimal:
-    cleaned = text.strip().replace(".", "").replace(",", ".")
-    return Decimal(cleaned) if cleaned else Decimal(0)
+    return Decimal(text.strip().replace(".", "").replace(",", "."))
 
 
 def parse_latest(csv_text: str) -> list[TesouroQuote]:
@@ -44,6 +45,8 @@ def parse_latest(csv_text: str) -> list[TesouroQuote]:
     for r in rows:
         if _date(r["Data Base"]) != latest or r["Tipo Titulo"].strip() in EXCLUDED_TYPES:
             continue
+        if any(not (r.get(c) or "").strip() for c in NUMERIC_COLUMNS):
+            continue  # linha sem taxa/PU: descarta em vez de virar 0
         pu_compra = _num(r["PU Compra Manha"])
         if pu_compra <= 0:
             continue

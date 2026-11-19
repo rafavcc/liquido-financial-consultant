@@ -38,3 +38,10 @@ def test_tesouro_recorded_fixture():
     assert q and len({x.data_base for x in q}) == 1
     assert all(x.pu_compra > 0 for x in q)
     assert (FIX / "tesouro.csv").stat().st_size < 50_000
+
+
+def test_tesouro_drops_rows_with_empty_rate_or_pu():
+    csv_text = TESOURO_CSV.replace("14,38;14,50;861,32", "14,38;;861,32").replace(
+        "0,05;0,06;20310,33", "0,05;0,06;"
+    )
+    assert parse_latest(csv_text) == []

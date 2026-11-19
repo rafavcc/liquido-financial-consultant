@@ -13,6 +13,10 @@ from app.data import bcb, focus, tesouro
 from app.data.repositories import MarketCacheRepository
 from app.data.tesouro import TesouroQuote
 
+FAILURE_COOLDOWN = timedelta(minutes=15)
+HTTP_TIMEOUT = httpx.Timeout(15.0)
+TESOURO_TIMEOUT = httpx.Timeout(90.0)
+
 SOURCES = ("bcb", "focus", "tesouro")
 
 # "ultimos/N" não serve: a 432 é diária, traz ~20 dias futuros (N<=20 só devolve futuro, N>=25 dá 400,
@@ -115,8 +119,8 @@ class HttpFetchers:
     def __init__(self, client: httpx.Client) -> None:
         self._client = client
 
-    def _get(self, url: str, params: dict | None = None) -> httpx.Response:
-        resp = self._client.get(url, params=params)
+    def _get(self, url: str, timeout: httpx.Timeout = HTTP_TIMEOUT) -> httpx.Response:
+        resp = self._client.get(url, timeout=timeout)
         resp.raise_for_status()
         return resp
 
@@ -137,7 +141,7 @@ class HttpFetchers:
         )
 
     def fetch_tesouro(self) -> dict:
-        return build_tesouro(tesouro.decode_csv(self._get(TESOURO_URL).content))
+        return build_tesouro(tesouro.decode_csv(self._get(TESOURO_URL, TESOURO_TIMEOUT).content))
 
 
 class FixtureFetchers:
@@ -192,14 +196,22 @@ class MarketService:
             )
             payload = entry.payload if entry else None
             stamp = entry.fetched_at if entry else None
-            if force or not fresh:
+            cooling = (
+                not force
+                and entry is not None
+                and entry.failed_at is not None
+                and now - entry.failed_at < FAILURE_COOLDOWN
+            )
+            if cooling:
+                errors[source] = entry.error or "falha recente"
+            elif force or not fresh:
                 try:
                     payload = to_jsonable_python(self._fetch(source, now))
                     stamp = now
                     self._cache.save(source, payload, now)
                 except Exception as exc:  # noqa: BLE001 - qualquer falha de fonte vira erro registrado
                     message = f"{type(exc).__name__}: {exc}"
-                    self._cache.save_error(source, message)
+                    self._cache.save_error(source, message, now)
                     errors[source] = message
             if payload is not None:
                 fields.update(payload)

@@ -86,9 +86,36 @@ def test_failure_keeps_previous_payload_and_records_error(env):
     assert "focus" in snap.errors and "fora do ar" in snap.errors["focus"]
     assert snap.fetched_at["focus"] == T0  # carimbo antigo preservado
     assert snap.fetched_at["bcb"] == clock.t and "bcb" not in snap.errors
-    # falha não renova o TTL: tenta de novo na próxima chamada
+    # dentro do cooldown a fonte que falhou não é tentada de novo, mas o erro continua visível
+    again = svc.get_snapshot(6)
+    assert f.calls["focus"] == 2
+    assert "focus" in again.errors and again.focus_selic_anual == first.focus_selic_anual
+
+
+def test_failed_source_not_retried_within_cooldown_retried_after_and_force_bypasses(env):
+    svc, f, clock = env
+    f.fail.add("tesouro")
     svc.get_snapshot(6)
-    assert f.calls["focus"] == 3
+    assert f.calls["tesouro"] == 1
+    clock.t = T0 + timedelta(minutes=14)
+    snap = svc.get_snapshot(6)
+    assert f.calls["tesouro"] == 1 and "tesouro" in snap.errors
+    assert f.calls["bcb"] == 1  # fontes saudáveis seguem em cache
+    svc.get_snapshot(6, force=True)
+    assert f.calls["tesouro"] == 2
+    clock.t = T0 + timedelta(minutes=14 + 16)
+    svc.get_snapshot(6)
+    assert f.calls["tesouro"] == 3
+
+
+def test_success_after_failure_clears_error_and_cooldown(env):
+    svc, f, clock = env
+    f.fail.add("focus")
+    svc.get_snapshot(6)
+    f.fail.clear()
+    clock.t = T0 + timedelta(minutes=16)
+    snap = svc.get_snapshot(6)
+    assert snap.errors == {} and snap.focus_selic_anual
 
 
 def test_empty_cache_and_failure_gives_empty_fields_and_error(env):
