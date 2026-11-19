@@ -45,9 +45,9 @@ const TIPO_LABEL: Partial<Record<ProductType, string>> = {
 
 export const tipoLabel = (t: ProductType): string => TIPO_LABEL[t] ?? t;
 
-/** Isenção de IR para pessoa física (lista estática; as alíquotas reais vêm do backend). */
-const ISENTOS: ProductType[] = ["LCI", "LCA", "CRI", "CRA"];
-export const isIsento = (t: ProductType): boolean => ISENTOS.includes(t);
+/** Isenção de IR: lista vem de /settings (ir_exempt_types); esta é só o fallback enquanto carrega. */
+export const ISENTOS_PADRAO: ProductType[] = ["LCI", "LCA", "CRI", "CRA"];
+export const isIsento = (t: ProductType, isentos: ProductType[] = ISENTOS_PADRAO): boolean => isentos.includes(t);
 
 /** Prazo de resgate "D+N", só para fundos. */
 export const resgateLabel = (p: ProductData): string | null =>

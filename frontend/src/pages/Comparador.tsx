@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api/client";
-import type { SimulationResult } from "../api/types";
+import type { ProductType, SimulationResult } from "../api/types";
 import { EMPTY_FILTERS, Filters, type FilterState } from "../components/Filters";
 import { IconChevron } from "../components/Icons";
 import { InputsBar } from "../components/InputsBar";
@@ -9,7 +9,7 @@ import { MarketStrip } from "../components/MarketStrip";
 import { ProductCard } from "../components/ProductCard";
 import { SectionHeader } from "../components/SectionHeader";
 import { formatDate, maskBRL } from "../lib/format";
-import { isIsento, tipoGrupo } from "../lib/labels";
+import { ISENTOS_PADRAO, isIsento, tipoGrupo } from "../lib/labels";
 import { parseBRL } from "../lib/parse";
 import { readStore, writeStore } from "../lib/storage";
 import { useDebounced } from "../lib/useDebounced";
@@ -27,13 +27,13 @@ function addDays(d: Date, n: number): Date {
   return c;
 }
 
-function applyFilters(list: SimulationResult[], f: FilterState): SimulationResult[] {
+function applyFilters(list: SimulationResult[], f: FilterState, isentos: ProductType[]): SimulationResult[] {
   return list.filter((r) => {
     const p = r.product;
     if (f.tipos.length > 0 && !f.tipos.includes(tipoGrupo(p.tipo))) return false;
     if (f.plataforma && p.plataforma !== f.plataforma) return false;
     if (f.soFgc && p.cobertura !== "FGC") return false;
-    if (f.soIsentos && !isIsento(p.tipo)) return false;
+    if (f.soIsentos && !isIsento(p.tipo, isentos)) return false;
     return true;
   });
 }
@@ -52,7 +52,6 @@ export function Comparador({ onSelect }: Props) {
   const [dataAlvo, setDataAlvo] = useState(() => readStore(K_DATA) ?? isoDate(addDays(new Date(), 365 * 3)));
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [showOff, setShowOff] = useState(false);
-  const [, setSelected] = useState<SimulationResult | null>(null);
 
   const hoje = isoDate(new Date());
   const amanha = isoDate(addDays(new Date(), 1));
@@ -69,7 +68,10 @@ export function Comparador({ onSelect }: Props) {
     placeholderData: keepPreviousData,
     retry: false,
   });
-  const marketQ = useQuery({ queryKey: ["market"], queryFn: api.market, retry: false });
+  // /simulate já traz `mercado`; a consulta própria só serve de fallback com entradas inválidas.
+  const marketQ = useQuery({ queryKey: ["market"], queryFn: api.market, retry: false, enabled: !valido });
+  const settingsQ = useQuery({ queryKey: ["settings"], queryFn: api.settings.get, retry: false });
+  const isentos: ProductType[] = settingsQ.data?.ir_exempt_types ?? ISENTOS_PADRAO;
   const refresh = useMutation({
     mutationFn: api.refreshMarket,
     onSuccess: (m) => {
@@ -78,22 +80,33 @@ export function Comparador({ onSelect }: Props) {
     },
   });
 
-  const data = sim.data;
-  const mercado = data?.mercado ?? refresh.data ?? marketQ.data;
+  // Com entradas inválidas (ou erro) não mostramos resultados antigos mantidos por keepPreviousData.
+  const data = valido && !sim.isError ? sim.data : undefined;
+  const mercado = valido ? sim.data?.mercado ?? marketQ.data : marketQ.data;
+  const marketErr = refresh.error ?? (!valido ? marketQ.error : null);
+  const marketMsgs = !marketErr
+    ? []
+    : marketErr instanceof ApiError
+      ? marketErr.messages
+      : ["Não foi possível atualizar os dados de mercado."];
 
   const plataformas = useMemo(() => {
     const all = [...(data?.vence_ate_data ?? []), ...(data?.vence_depois ?? []), ...(data?.indisponiveis ?? [])];
     return [...new Set(all.map((r) => r.product.plataforma))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [data]);
 
-  const verdes = useMemo(() => applyFilters(data?.vence_ate_data ?? [], filters), [data, filters]);
-  const vermelhos = useMemo(() => applyFilters(data?.vence_depois ?? [], filters), [data, filters]);
-  const cinzas = useMemo(() => applyFilters(data?.indisponiveis ?? [], filters), [data, filters]);
+  // Plataforma que sumiu dos resultados não pode continuar filtrando.
+  useEffect(() => {
+    if (data && filters.plataforma && !plataformas.includes(filters.plataforma)) {
+      setFilters((f) => ({ ...f, plataforma: "" }));
+    }
+  }, [data, plataformas, filters.plataforma]);
 
-  const select = (r: SimulationResult) => {
-    setSelected(r);
-    onSelect?.(r);
-  };
+  const verdes = useMemo(() => applyFilters(data?.vence_ate_data ?? [], filters, isentos), [data, filters, isentos]);
+  const vermelhos = useMemo(() => applyFilters(data?.vence_depois ?? [], filters, isentos), [data, filters, isentos]);
+  const cinzas = useMemo(() => applyFilters(data?.indisponiveis ?? [], filters, isentos), [data, filters, isentos]);
+
+  const select = (r: SimulationResult) => onSelect?.(r);
 
   const erroValidacao =
     valorNum === null || Number(valorNum) <= 0
@@ -123,6 +136,14 @@ export function Comparador({ onSelect }: Props) {
         }}
       />
 
+      {marketMsgs.length > 0 && (
+        <div role="alert" className="rounded-xl border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">
+          {marketMsgs.map((m) => (
+            <p key={m}>{m}</p>
+          ))}
+        </div>
+      )}
+
       {(erroValidacao || erroApi.length > 0) && (
         <div role="alert" className="rounded-xl border border-neg/30 bg-neg-bg px-3 py-2 text-sm text-neg">
           {(erroValidacao ? [erroValidacao] : erroApi).map((m) => (
@@ -149,7 +170,7 @@ export function Comparador({ onSelect }: Props) {
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {verdes.map((r, i) => (
-                  <ProductCard key={r.product.id} result={r} rank={i + 1} onSelect={select} />
+                  <ProductCard key={r.product.id} result={r} rank={i + 1} onSelect={select} isentoTypes={isentos} />
                 ))}
               </div>
             )}
@@ -167,7 +188,7 @@ export function Comparador({ onSelect }: Props) {
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {vermelhos.map((r) => (
-                  <ProductCard key={r.product.id} result={r} onSelect={select} />
+                  <ProductCard key={r.product.id} result={r} onSelect={select} isentoTypes={isentos} />
                 ))}
               </div>
             )}
@@ -175,21 +196,26 @@ export function Comparador({ onSelect }: Props) {
 
           {cinzas.length > 0 && (
             <section aria-label="Indisponíveis para este valor">
-              <button
-                type="button"
-                aria-expanded={showOff}
-                onClick={() => setShowOff((s) => !s)}
-                className="mb-3 flex w-full items-center gap-2 text-left"
-              >
-                <div className="flex-1">
-                  <SectionHeader tone="off" title="Indisponíveis para este valor" count={cinzas.length} />
-                </div>
-                <span className="text-muted"><IconChevron open={showOff} /></span>
-              </button>
+              <SectionHeader
+                tone="off"
+                title="Indisponíveis para este valor"
+                count={cinzas.length}
+                action={
+                  <button
+                    type="button"
+                    aria-expanded={showOff}
+                    aria-label={showOff ? "Recolher indisponíveis" : "Mostrar indisponíveis"}
+                    onClick={() => setShowOff((s) => !s)}
+                    className="rounded-full p-1.5 text-muted hover:text-ink"
+                  >
+                    <IconChevron open={showOff} />
+                  </button>
+                }
+              />
               {showOff && (
                 <div className="grid gap-3 md:grid-cols-2">
                   {cinzas.map((r) => (
-                    <ProductCard key={r.product.id} result={r} onSelect={select} />
+                    <ProductCard key={r.product.id} result={r} onSelect={select} isentoTypes={isentos} />
                   ))}
                 </div>
               )}

@@ -1,12 +1,15 @@
 import type { SimulationResult } from "../api/types";
 import { formatBRL, formatDate, formatPct } from "../lib/format";
 import { indexLabel, isIsento, resgateLabel, tipoLabel } from "../lib/labels";
+import type { ProductType } from "../api/types";
 import { AlertBadge } from "./AlertBadge";
 
 interface Props {
   result: SimulationResult;
   rank?: number;
   onSelect?: (result: SimulationResult) => void;
+  /** Tipos isentos de IR (vem de /settings); sem ele usa a lista padrão. */
+  isentoTypes?: ProductType[];
 }
 
 const Chip = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
@@ -15,7 +18,7 @@ const Chip = ({ children, className = "" }: { children: React.ReactNode; classNa
   </span>
 );
 
-export function ProductCard({ result, rank, onSelect }: Props) {
+export function ProductCard({ result, rank, onSelect, isentoTypes }: Props) {
   const p = result.product;
   const late = result.secao === "VENCE_DEPOIS";
   const off = result.secao === "INDISPONIVEL";
@@ -25,12 +28,10 @@ export function ProductCard({ result, rank, onSelect }: Props) {
   const stripe = late ? "before:bg-neg" : off ? "before:bg-off/40" : "before:bg-pos";
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect?.(result)}
+    <article
       className={`relative block w-full overflow-hidden rounded-2xl border bg-surface p-4 text-left shadow-card transition
         before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] ${stripe} ${border}
-        ${off ? "opacity-80" : ""} hover:shadow-md focus-visible:ring-2 focus-visible:ring-accent`}
+        ${off ? "opacity-80" : ""} hover:shadow-md focus-within:ring-2 focus-within:ring-accent`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
@@ -40,7 +41,15 @@ export function ProductCard({ result, rank, onSelect }: Props) {
             </span>
           )}
           <div className="min-w-0">
-            <h3 className="truncate text-[15px] font-semibold leading-tight">{p.nome}</h3>
+            <h3 className="truncate text-[15px] font-semibold leading-tight">
+              <button
+                type="button"
+                onClick={() => onSelect?.(result)}
+                className="text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+              >
+                {p.nome}
+              </button>
+            </h3>
             <p className="mt-0.5 text-xs text-muted">
               {p.plataforma} · {tipoLabel(p.tipo)}
               {dn && ` · ${dn}`}
@@ -60,7 +69,7 @@ export function ProductCard({ result, rank, onSelect }: Props) {
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
         <Chip className="bg-subtle text-ink">{indexLabel(p.indexador, p.taxa)}</Chip>
         {p.data_vencimento && <span className="text-muted">Vence {formatDate(p.data_vencimento)}</span>}
-        {isIsento(p.tipo) && <Chip className="bg-pos-bg text-pos">Isento de IR</Chip>}
+        {isIsento(p.tipo, isentoTypes) && <Chip className="bg-pos-bg text-pos">Isento de IR</Chip>}
         {p.cobertura === "FGC" && <Chip className="bg-subtle text-muted">FGC</Chip>}
         {result.taxa_liquida_aa !== null && (
           <span className="ml-auto font-medium text-muted">≈ {formatPct(result.taxa_liquida_aa)} a.a. líquido</span>
@@ -74,6 +83,6 @@ export function ProductCard({ result, rank, onSelect }: Props) {
           ))}
         </div>
       )}
-    </button>
+    </article>
   );
 }
