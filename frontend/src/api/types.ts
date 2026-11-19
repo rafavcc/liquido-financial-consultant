@@ -13,7 +13,7 @@ export type Section = "VENCE_ATE_DATA" | "VENCE_DEPOIS" | "INDISPONIVEL";
 export type AlertCode =
   | "PROJECAO" | "FGC_LIMITE" | "SEM_FGC" | "ESTIMATIVA_MERCADO" | "FUNDO_SEM_GARANTIA"
   | "PARADO" | "EXEMPLO" | "MODELO_SIMPLIFICADO" | "ABAIXO_MINIMO" | "NAO_RESGATAVEL"
-  | "SEM_DADOS_MERCADO" | "RESGATE_DN" | "ERRO_CALCULO";
+  | "SEM_DADOS_MERCADO" | "RESGATE_DN" | "ERRO_CALCULO" | "VENCIDO";
 
 export interface ProductData {
   id: string;

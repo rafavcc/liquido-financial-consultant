@@ -32,6 +32,13 @@ class BankProduct(Product):
 
         today = ctx.today
         venc = ctx.cal.adjust_next(d.data_vencimento)
+        if venc <= today:
+            return self._unavailable(
+                valor,
+                AlertCode.VENCIDO,
+                f"Produto vencido em {d.data_vencimento:%d/%m/%Y} — atualize ou exclua",
+                ctx,
+            )
         dias_parado = 0
         extra: list[Alert] = []
         if venc <= data_alvo:

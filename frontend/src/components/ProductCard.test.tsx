@@ -46,3 +46,13 @@ test("rentabilidade negativa mostra sinal de menos e tom de perda, sem '+'", () 
   expect(screen.queryByText(/\+/)).toBeNull();
   expect(screen.getByText(/−28,90% a\.a\. líquido/)).toBeInTheDocument();
 });
+
+test("produto vencido mostra a mensagem com a data na seção de indisponíveis", () => {
+  const vencido = {
+    ...fixtureResult, secao: "INDISPONIVEL" as const, resgatavel: false, valor_liquido: null, valor_bruto: null,
+    rentab_liquida: null, taxa_liquida_aa: null,
+    alertas: [{ code: "VENCIDO" as const, message: "Produto vencido em 10/11/2026 — atualize ou exclua" }],
+  };
+  render(<ProductCard result={vencido} />);
+  expect(screen.getByText(/Produto vencido em 10\/11\/2026 — atualize ou exclua/)).toBeInTheDocument();
+});

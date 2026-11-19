@@ -68,5 +68,6 @@ export const ALERT_META: Record<AlertCode, { icon: string; text: string; tone: A
   ABAIXO_MINIMO: { icon: "⛔", text: "Abaixo do mínimo", tone: "neg" },
   SEM_DADOS_MERCADO: { icon: "📡", text: "Sem dados de mercado", tone: "off" },
   RESGATE_DN: { icon: "🗓️", text: "Prazo de resgate", tone: "info" },
+  VENCIDO: { icon: "⌛", text: "Produto vencido", tone: "neg" },
   ERRO_CALCULO: { icon: "⚠️", text: "Erro de cálculo", tone: "neg" },
 };

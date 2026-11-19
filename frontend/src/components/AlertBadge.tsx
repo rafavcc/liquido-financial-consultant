@@ -9,7 +9,7 @@ export const TONE: Record<AlertTone, string> = {
 };
 
 /** Alertas cujo texto dinâmico (datas, dias) vale mais que o rótulo curto. */
-const SHOW_MESSAGE = new Set(["RESGATE_DN", "PARADO"]);
+const SHOW_MESSAGE = new Set(["RESGATE_DN", "PARADO", "VENCIDO"]);
 
 export function AlertBadge({ alert }: { alert: Alert }) {
   const meta = ALERT_META[alert.code] ?? { icon: "ℹ️", text: alert.message, tone: "info" as const };

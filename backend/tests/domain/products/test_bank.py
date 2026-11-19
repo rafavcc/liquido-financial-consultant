@@ -103,3 +103,18 @@ def test_non_projection_value_error_propagates(monkeypatch):
     monkeypatch.setattr(bank, "accrual_factor", boom)
     with pytest.raises(ValueError, match="boom"):
         CDB(make(data_vencimento=date(2027, 12, 1))).simulate(D("10000"), date(2028, 1, 1), ctx)
+
+
+def test_matured_product_is_unavailable_with_vencido_alert():
+    p = CDB(make(data_vencimento=date(2026, 11, 10)))
+    r = p.simulate(D("10000"), date(2028, 6, 1), ctx)
+    assert r.secao == Section.INDISPONIVEL and r.valor_liquido is None
+    assert AlertCode.VENCIDO in codes(r)
+    assert next(a for a in r.alertas if a.code == AlertCode.VENCIDO).message == (
+        "Produto vencido em 10/11/2026 — atualize ou exclua"
+    )
+
+
+def test_product_maturing_today_is_also_vencido():
+    r = CDB(make(data_vencimento=TODAY)).simulate(D("10000"), date(2028, 6, 1), ctx)
+    assert r.secao == Section.INDISPONIVEL and AlertCode.VENCIDO in codes(r)
