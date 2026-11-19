@@ -69,14 +69,13 @@ class BankProduct(Product):
             saida = data_alvo
 
         try:
-            fator = accrual_factor(d.indexador, d.taxa, today, saida, ctx)
             fatores = self._cumulative_factors(saida, ctx)
+            fator = fatores[-1][1]
         except ProjecaoIndisponivel:
             return self._unavailable(valor, AlertCode.SEM_DADOS_MERCADO, sem_dados, ctx)
 
         bruto = valor * fator
         serie = [SeriePoint(data=p, valor_bruto=valor * f) for p, f in fatores]
-        serie[-1] = SeriePoint(data=saida, valor_bruto=bruto)  # sem deriva de arredondamento
         taxes = apply_taxes(bruto - valor, (saida - today).days, d.tipo, ctx.settings)
         liquido = bruto - taxes.iof - taxes.ir
         return SimulationResult(

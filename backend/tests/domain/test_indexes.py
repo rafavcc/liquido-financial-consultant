@@ -36,7 +36,7 @@ def test_cdi_spread_and_selic_factor():
     assert abs(p.cdi_factor(TODAY, end, spread=D("0.02")) - D("1.1365") * D("1.02")) < D("1e-9")
     assert abs(p.selic_factor(TODAY, end) - D("1.1375")) < D("1e-9")
     assert p.cdi_aa(TODAY) == D("0.1365")
-    assert IndexPath.pre_factor(D("0.10"), TODAY, end) == D("1.10")
+    assert abs(IndexPath.pre_factor(D("0.10"), TODAY, end) - D("1.10")) < D("1e-12")
 
 
 def test_interpolation():

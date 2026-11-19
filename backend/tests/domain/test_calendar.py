@@ -36,3 +36,22 @@ def test_adjust_next_and_offset_return_plain_dates():
     assert type(cal.adjust_next(date(2027, 1, 1))) is date
     assert cal.adjust_next(date(2027, 1, 1)) == date(2027, 1, 4)
     assert type(cal.add_business_days(date(2026, 11, 19), 5)) is date
+
+
+def test_index_matches_bizdays_library():
+    import random
+    from datetime import timedelta
+
+    from bizdays import Calendar
+
+    ref = Calendar.load(name="ANBIMA")
+    rng = random.Random(1)
+    for _ in range(3000):
+        a = date(2026, 1, 1) + timedelta(days=rng.randint(0, 9000))
+        b = a + timedelta(days=rng.randint(1, 3000))
+        assert cal.business_days_between(a, b) == ref.bizdays(a, b)
+        assert cal.adjust_next(a) == ref.adjust_next(a)
+        assert cal.is_business_day(a) == bool(ref.isbizday(a))
+        assert cal.business_days(a, a + timedelta(days=30)) == [
+            d for d in (a + timedelta(days=i) for i in range(1, 31)) if ref.isbizday(d)
+        ]

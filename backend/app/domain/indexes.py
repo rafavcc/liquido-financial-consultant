@@ -1,4 +1,5 @@
 from bisect import bisect_right
+from functools import lru_cache
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -10,6 +11,12 @@ D = Decimal
 
 _DAYS_YEAR = D(252)
 _ONE = D(1)
+
+
+@lru_cache(maxsize=4096)
+def daily_unit(rate: Decimal) -> Decimal:
+    """(1 + rate)^(1/252): fator de um dia útil; potências inteiras dele evitam exp/ln por fluxo."""
+    return (_ONE + rate) ** (_ONE / _DAYS_YEAR)
 
 
 class ProjecaoIndisponivel(ValueError):
@@ -154,7 +161,7 @@ class IndexPath:
     @staticmethod
     def pre_factor(rate: Decimal, start: date, end: date) -> Decimal:
         du = get_calendar().business_days_between(start, end)
-        return (_ONE + rate) ** (D(du) / _DAYS_YEAR)
+        return daily_unit(rate) ** du
 
     # --- Tela Mercado ------------------------------------------------------------------------
 

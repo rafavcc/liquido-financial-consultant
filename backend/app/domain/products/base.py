@@ -16,6 +16,7 @@ if TYPE_CHECKING:  # settings importa ProductType deste módulo; evita ciclo
     from app.domain.settings import Settings
 
 _ZERO = Decimal(0)
+_MAX_SERIE = 60
 
 
 class ProductType(StrEnum):
@@ -237,5 +238,8 @@ class Product(ABC):
             if eom > start:
                 pontos.append(eom)
             y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+        if len(pontos) > _MAX_SERIE - 1:  # séries longas: afina para no máximo _MAX_SERIE pontos
+            passo = -(-len(pontos) // (_MAX_SERIE - 1))
+            pontos = pontos[passo - 1 :: passo]
         pontos.append(end)
         return pontos

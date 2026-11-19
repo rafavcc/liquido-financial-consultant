@@ -6,7 +6,7 @@ from decimal import ROUND_DOWN, ROUND_HALF_EVEN, Decimal
 
 from app.data.tesouro import TesouroQuote
 from app.domain.calendar import BusinessCalendar
-from app.domain.indexes import ProjecaoIndisponivel
+from app.domain.indexes import ProjecaoIndisponivel, daily_unit
 from app.domain.products.accrual import needs_index
 from app.domain.products.base import (
     Alert,
@@ -88,10 +88,11 @@ def flows(tipo: ProductType, venc: date, after: date) -> list[Flow]:
 
 def pv_factor(fluxos: list[Flow], rate: Decimal, ref: date, cal: BusinessCalendar) -> Decimal:
     total = Decimal(0)
+    v = _ONE / daily_unit(rate)
     for d, f in fluxos:
         # du até a data nominal (sem adjust_next): é a convenção que reproduz o PU publicado
         du = cal.business_days_between(ref, d)
-        total += f / (_ONE + rate) ** (Decimal(du) / 252)
+        total += f * v**du
     return total
 
 
