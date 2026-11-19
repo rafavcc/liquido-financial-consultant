@@ -223,6 +223,7 @@ export function Configuracoes() {
 
   const edit = (patch: Partial<SettingsForm>) => {
     setServerErrors([]);
+    setActionError([]);
     setEdited({ ...form, ...patch });
   };
   const { errors } = built;
@@ -414,6 +415,7 @@ export function Configuracoes() {
                       type="button"
                       aria-label={`Remover linha ${i + 1}`}
                       disabled={form.rows.length <= 1}
+                      aria-describedby={form.rows.length === 1 ? "manual-min-note" : undefined}
                       title={form.rows.length <= 1 ? "Informe ao menos um ano" : undefined}
                       onClick={() => edit({ rows: form.rows.filter((_, j) => j !== i) })}
                       className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-neg disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted [&_svg]:h-4 [&_svg]:w-4"
@@ -424,6 +426,9 @@ export function Configuracoes() {
                 );
               })}
             </div>
+            {form.rows.length === 1 && (
+              <p id="manual-min-note" className="mt-2 text-xs text-muted">É preciso manter ao menos um ano na tabela.</p>
+            )}
             {errors.manual_selic_by_year && <p className="mt-1.5 text-xs text-neg">{errors.manual_selic_by_year}</p>}
             {Object.entries(errors).filter(([p]) => /^manual_selic_by_year\.\d+$/.test(p)).map(([p, m]) => (
               <p key={p} className="mt-1.5 text-xs text-neg">Linha {Number(p.split(".")[1]) + 1}: {m}</p>

@@ -249,6 +249,7 @@ test("modo Manual: explica a regra da última linha e não deixa removê-la", as
   const remover = await screen.findByRole("button", { name: "Remover linha 1" });
   expect(remover).toBeDisabled();
   expect(remover).toHaveAttribute("title", "Informe ao menos um ano");
+  expect(screen.getByText("É preciso manter ao menos um ano na tabela.")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Adicionar ano" }));
   expect(screen.getByRole("button", { name: "Remover linha 1" })).toBeEnabled();
 });
@@ -273,4 +274,24 @@ test("falha no refresh ou no reset não aparece como erro de salvamento", async 
   expect(await screen.findByText("Falha ao restaurar")).toBeInTheDocument();
   expect(screen.queryByRole("alert", { name: "Erros ao salvar" })).toBeNull();
   expect(screen.queryByText(/Não foi possível salvar/)).toBeNull();
+});
+
+test("modo manual salvo sem nenhum ano mostra a mensagem sob a tabela", async () => {
+  mocked.settings.get.mockResolvedValue({ ...settings, projection_mode: "manual" });
+  setup();
+  const campo = await screen.findByLabelText("Custódia B3 (% ao ano)");
+  await userEvent.type(campo, "1");
+  const grupo = screen.getByRole("region", { name: "Projeções" });
+  expect(within(grupo).getByText("Informe ao menos um ano")).toBeInTheDocument();
+  expect(salvar()).toBeDisabled();
+});
+
+test("editar um campo limpa o erro de refresh", async () => {
+  mocked.refreshMarket.mockRejectedValue(new ApiError(502, ["Fonte fora do ar"]));
+  setup();
+  const dados = await screen.findByRole("region", { name: "Dados" });
+  await userEvent.click(within(dados).getByRole("button", { name: "Atualizar agora" }));
+  await screen.findByText("Fonte fora do ar");
+  await userEvent.type(screen.getByLabelText("Custódia B3 (% ao ano)"), "1");
+  expect(screen.queryByText("Fonte fora do ar")).toBeNull();
 });
