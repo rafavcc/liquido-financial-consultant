@@ -19,6 +19,7 @@ command -v npm >/dev/null 2>&1 || erro "'npm' não encontrado. Ele vem junto com
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 [ "$NODE_MAJOR" -ge 20 ] || erro "Node.js $NODE_MAJOR é muito antigo; é preciso a versão 20 ou mais nova."
 command -v tailscale >/dev/null 2>&1 || erro "'tailscale' não encontrado. Instale em https://tailscale.com/download e entre na sua conta (tailscale up)."
+command -v curl >/dev/null 2>&1 || erro "'curl' não encontrado. Instale-o (ex.: sudo apt install curl)."
 command -v systemctl >/dev/null 2>&1 || erro "'systemctl' não encontrado: este script precisa de systemd."
 
 info "Instalando dependências do backend"
@@ -48,8 +49,8 @@ info "Publicando na sua rede Tailscale (pede sudo)"
 sudo tailscale serve --bg 8000
 
 URL=""
-if command -v jq >/dev/null 2>&1; then
-  DNS="$(tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // empty' | sed 's/\.$//')" || DNS=""
+if command -v python3 >/dev/null 2>&1; then
+  DNS="$(tailscale status --json 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))' 2>/dev/null)" || DNS=""
   [ -n "$DNS" ] && URL="https://$DNS"
 fi
 

@@ -31,6 +31,14 @@ def create_app(
     for module in (simulate, products, settings, market):
         app.include_router(module.router, prefix="/api")
 
+    @app.api_route(
+        "/api/{rest:path}",
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+        include_in_schema=False,
+    )
+    def api_not_found(rest: str) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": "Não encontrado"})
+
     static_root = app.state.container.static_dir
     if static_root is not None and static_root.is_dir():
         _mount_spa(app, static_root.resolve())
@@ -39,19 +47,27 @@ def create_app(
 
 def _mount_spa(app: FastAPI, root: Path) -> None:
     index = root / "index.html"
+    not_found = JSONResponse(status_code=404, content={"detail": "Não encontrado"})
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str) -> Response:
-        if full_path == "api" or full_path.startswith("api/"):
-            return JSONResponse(status_code=404, content={"detail": "Não encontrado"})
-        candidate = (root / full_path).resolve()
-        if candidate.is_file() and candidate.is_relative_to(root):
+        if "\x00" in full_path:
+            return not_found
+        try:
+            candidate = (root / full_path).resolve()
+            is_file = candidate.is_file() and candidate.is_relative_to(root)
+        except (OSError, ValueError):
+            return not_found
+        if is_file:
             # arquivos com hash em /assets nunca mudam; sw.js e index.html precisam ser revalidados
             if candidate.relative_to(root).parts[0] == "assets":
                 cache = "public, max-age=31536000, immutable"
             else:
                 cache = "no-cache"
             return FileResponse(candidate, headers={"Cache-Control": cache})
+        if full_path.startswith("assets/"):
+            # chunk antigo após um deploy: falha limpa em vez de devolver HTML como JS
+            return not_found
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
