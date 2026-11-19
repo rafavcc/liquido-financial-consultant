@@ -24,7 +24,7 @@
 - `data_inicio` da simulação = hoje; `data_alvo` > hoje e `valor` > 0 (senão HTTP 422 com mensagem em pt-BR).
 - Vencimento/pagamento em dia não útil é liquidado no próximo dia útil (`adjust_next`).
 - Produto dependente de projeção ⇒ alerta `PROJECAO`; saída antecipada do Tesouro ⇒ `ESTIMATIVA_MERCADO`.
-- Fontes: SGS `https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados/ultimos/{n}?formato=json` (432 Selic meta, 13522 IPCA 12m); Focus `https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/` (`ExpectativasMercadoAnuais`, `ExpectativaMercadoMensais`, filtro `baseCalculo eq 0`, `Data` mais recente); Tesouro CSV `https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/PrecoTaxaTesouroDireto.csv`.
+- Fontes: SGS `https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados?formato=json&dataInicial=dd/mm/aaaa&dataFinal=dd/mm/aaaa` (janela hoje−120d..hoje+30d; `ultimos/N` falha para a série 432) (432 Selic meta, 13522 IPCA 12m); Focus `https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/` (`ExpectativasMercadoAnuais`, `ExpectativaMercadoMensais`, filtro `baseCalculo eq 0`, `Data` mais recente); Tesouro CSV `https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/PrecoTaxaTesouroDireto.csv`.
 
 ## Review Focus
 
