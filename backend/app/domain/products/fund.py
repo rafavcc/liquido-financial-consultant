@@ -2,12 +2,14 @@ from datetime import date, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal
 
 from app.domain.calendar import BusinessCalendar
+from app.domain.indexes import ProjecaoIndisponivel
 from app.domain.products.accrual import needs_index
 from app.domain.products.base import (
     Alert,
     AlertCode,
     Indexer,
     Product,
+    ProductType,
     SeriePoint,
     Section,
     SimContext,
@@ -61,7 +63,7 @@ class FundoRendaFixa(Product):
         )
 
         ganho_total = bruto + cc_pago - valor
-        taxes = apply_taxes(ganho_total, (data_alvo - today).days, d.tipo, ctx.settings)
+        taxes = apply_taxes(ganho_total, (data_alvo - today).days, ProductType.FUNDO_RF, ctx.settings)
         ir = max(Decimal(0), taxes.ir - cc_pago)
         liquido = bruto - taxes.iof - ir
 
@@ -71,13 +73,13 @@ class FundoRendaFixa(Product):
                 message="Fundo sem rentabilidade garantida — rentabilidade-alvo estimada",
             )
         ]
-        solicitacao = None
-        if d.prazo_resgate_dias is not None:
-            solicitacao = data_alvo - timedelta(days=d.prazo_resgate_dias)
+        prazo = d.prazo_resgate_dias or 0
+        solicitacao = data_alvo - timedelta(days=prazo)
+        if prazo > 0:
             alertas.append(
                 Alert(
                     code=AlertCode.RESGATE_DN,
-                    message=f"Solicite o resgate até {solicitacao:%d/%m/%Y} (D+{d.prazo_resgate_dias})",
+                    message=f"Solicite o resgate até {solicitacao:%d/%m/%Y} (D+{prazo})",
                 )
             )
         return SimulationResult(
@@ -104,7 +106,8 @@ class FundoRendaFixa(Product):
     ) -> tuple[Decimal, Decimal, list[SeriePoint]]:
         """Valor bruto após come-cotas, come-cotas pago e série mensal."""
         d, index, cal = self.data, ctx.index, ctx.cal
-        assert index is not None
+        if index is None:
+            raise ProjecaoIndisponivel("sem projeção de CDI")
         pct, spread = (d.taxa, Decimal(0)) if d.indexador == Indexer.PCT_CDI else (_ONE, d.taxa)
         fator_adm = (_ONE - taxa_adm) ** (_ONE / _DAYS_YEAR) if taxa_adm else _ONE
         cc_datas = set(come_cotas_dates(cal, ctx.today, saida))

@@ -13,7 +13,7 @@ _BUILDERS: dict[ProductType, type[Product]] = {
 
 
 def build_product(data: ProductData) -> Product:
-    try:
-        return _BUILDERS[data.tipo](data)
-    except KeyError:
-        raise ValueError(f"tipo não suportado pela fábrica: {data.tipo}") from None
+    cls = _BUILDERS.get(data.tipo)
+    if cls is None:
+        raise ValueError(f"tipo não suportado pela fábrica: {data.tipo}")
+    return cls(data)
