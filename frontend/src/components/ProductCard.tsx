@@ -1,0 +1,79 @@
+import type { SimulationResult } from "../api/types";
+import { formatBRL, formatDate, formatPct } from "../lib/format";
+import { indexLabel, isIsento, resgateLabel, tipoLabel } from "../lib/labels";
+import { AlertBadge } from "./AlertBadge";
+
+interface Props {
+  result: SimulationResult;
+  rank?: number;
+  onSelect?: (result: SimulationResult) => void;
+}
+
+const Chip = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-4 ${className}`}>
+    {children}
+  </span>
+);
+
+export function ProductCard({ result, rank, onSelect }: Props) {
+  const p = result.product;
+  const late = result.secao === "VENCE_DEPOIS";
+  const off = result.secao === "INDISPONIVEL";
+  const dn = resgateLabel(p);
+
+  const border = late ? "border-neg/40 hover:border-neg" : off ? "border-line" : "border-line hover:border-accent";
+  const stripe = late ? "before:bg-neg" : off ? "before:bg-off/40" : "before:bg-pos";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect?.(result)}
+      className={`relative block w-full overflow-hidden rounded-2xl border bg-surface p-4 text-left shadow-card transition
+        before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] ${stripe} ${border}
+        ${off ? "opacity-80" : ""} hover:shadow-md focus-visible:ring-2 focus-visible:ring-accent`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          {rank !== undefined && (
+            <span className="mt-0.5 flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full bg-pos-bg px-1.5 text-xs font-bold text-pos">
+              #{rank}
+            </span>
+          )}
+          <div className="min-w-0">
+            <h3 className="truncate text-[15px] font-semibold leading-tight">{p.nome}</h3>
+            <p className="mt-0.5 text-xs text-muted">
+              {p.plataforma} · {tipoLabel(p.tipo)}
+              {dn && ` · ${dn}`}
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className={`text-xl font-bold leading-tight tracking-tight ${off ? "text-muted" : ""}`}>
+            {formatBRL(result.valor_liquido)}
+          </div>
+          {result.rentab_liquida !== null && (
+            <div className="mt-0.5 text-xs font-semibold text-pos">+{formatPct(result.rentab_liquida)}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+        <Chip className="bg-subtle text-ink">{indexLabel(p.indexador, p.taxa)}</Chip>
+        {p.data_vencimento && <span className="text-muted">Vence {formatDate(p.data_vencimento)}</span>}
+        {isIsento(p.tipo) && <Chip className="bg-pos-bg text-pos">Isento de IR</Chip>}
+        {p.cobertura === "FGC" && <Chip className="bg-subtle text-muted">FGC</Chip>}
+        {result.taxa_liquida_aa !== null && (
+          <span className="ml-auto font-medium text-muted">≈ {formatPct(result.taxa_liquida_aa)} a.a. líquido</span>
+        )}
+      </div>
+
+      {result.alertas.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {result.alertas.map((a) => (
+            <AlertBadge key={a.code} alert={a} />
+          ))}
+        </div>
+      )}
+    </button>
+  );
+}

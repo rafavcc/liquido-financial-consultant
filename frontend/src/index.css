@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 246 247 249;
+  --surface: 255 255 255;
+  --subtle: 241 243 246;
+  --line: 226 229 235;
+  --ink: 17 24 39;
+  --muted: 100 109 124;
+  --accent: 15 118 110;
+  --accent-fg: 255 255 255;
+  --pos: 4 120 87;
+  --pos-bg: 220 245 232;
+  --neg: 185 28 28;
+  --neg-bg: 254 226 226;
+  --warn: 146 84 4;
+  --warn-bg: 254 243 199;
+  --off: 100 109 124;
+  --off-bg: 235 237 241;
+  --shadow: 15 23 42;
+}
+:root.dark {
+  --bg: 11 14 19;
+  --surface: 19 24 32;
+  --subtle: 27 33 43;
+  --line: 40 48 61;
+  --ink: 237 240 245;
+  --muted: 148 158 174;
+  --accent: 45 190 170;
+  --accent-fg: 6 20 18;
+  --pos: 74 222 150;
+  --pos-bg: 12 52 38;
+  --neg: 248 113 113;
+  --neg-bg: 62 22 24;
+  --warn: 251 191 36;
+  --warn-bg: 56 42 10;
+  --off: 148 158 174;
+  --off-bg: 33 39 49;
+  --shadow: 0 0 0;
+}
+
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+body {
+  @apply bg-bg font-sans text-ink antialiased;
+  font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+}
+.num { font-variant-numeric: tabular-nums; }
+input, select, button { font: inherit; }
+:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
