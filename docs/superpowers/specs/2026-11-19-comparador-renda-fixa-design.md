@@ -1,6 +1,6 @@
 # Comparador de Renda Fixa — Design
 
-Data: 2026-11-19 · Status: aguardando aprovação
+Data: 2026-11-19 · Status: aprovado (2026-11-19)
 
 ## 1. Intenção
 
@@ -29,6 +29,8 @@ Exigência explícita do usuário: **produto muito bem acabado**.
 
 ### Não-objetivos (por ora)
 - Buscar ofertas de XP/BTG automaticamente (bloqueiam acesso automatizado / exigem login).
+- Buscar ofertas na App Renda Fixa (apprendafixa.com.br): só há API interna não documentada; acesso
+  automatizado bloqueado nesta sessão. Fica para uma fonte futura (preferência: importação por colagem).
 - Importação por copiar/colar (o usuário trará os dados depois; será outra etapa).
 - Multiusuário, login, renda variável, acompanhamento de carteira, reinvestimento após vencimento.
 - Debêntures (extensão fácil no futuro, não pedida).
@@ -82,6 +84,8 @@ iPhone / PC ──HTTPS (tailscale serve)──▶ 127.0.0.1:8000  uvicorn (syst
 - Atualização de dados de mercado: **cache com validade** (configurável, padrão 6 h). Ao calcular,
   se o cache estiver vencido, busca de novo; na falha, usa o último valor e exibe aviso
   "dados de DD/MM HH:MM — falha ao atualizar". Botão "Atualizar agora" na UI. Sem serviço/timer extra.
+- **Fontes de produtos plugáveis**: interface `ProductSource` (`load(ctx) -> list[Product]`). Na v1:
+  `ManualSource` (SQLite) e `TesouroSource` (CSV do Tesouro). Futuro: importador por colagem, App Renda Fixa.
 - Sem autenticação: o serviço escuta só em `127.0.0.1` e é publicado apenas na tailnet. *(decisão minha)*
 
 ### Estrutura do repositório (proposta)
@@ -171,8 +175,9 @@ Calendário ANBIMA (lib `bizdays`). Fatores diários por dia útil, base 252. IR
 - **Selic (Tesouro Selic)**: Selic diária projetada, aplicada sobre o PU com o ágio/deságio do CSV.
 
 ### 7.4 Projeções (trajetória diária)
-- Selic: medianas do Focus por reunião do Copom (as disponíveis), depois medianas anuais de fim de ano
-  (transição linear entre pontos), depois último valor mantido. CDI = Selic − `spread_cdi_selic` (config, padrão 0,10 p.p.).
+- Selic: âncoras = Selic meta atual (hoje) e medianas anuais de fim de ano do Focus (31/12 de cada ano);
+  interpolação linear diária entre âncoras; após a última âncora, último valor mantido. *(decisão minha:
+  dispensa calendário do Copom; diferença desprezível para comparação)* CDI = Selic − `spread_cdi_selic` (config, padrão 0,10 p.p.).
 - IPCA: medianas mensais do Focus (próximos ~12–18 meses), depois anuais convertidas em mensal; depois último valor.
 - Modo **manual** nas configurações: o usuário informa Selic e IPCA por ano (cenários), substituindo o Focus.
 - Qualquer produto com indexador ≠ PRE (ou fundo) recebe alerta "⚠ Depende de projeção de CDI/IPCA (Focus, DD/MM)".
