@@ -110,7 +110,9 @@ function build(f: FormState, base?: ProductData): { body?: Partial<ProductData>;
   if (!f.taxa.trim()) errors.taxa = OBRIGATORIO;
   else if (taxa === null) errors.taxa = "Informe um número, como 112 ou 14,2";
 
-  const minimo = f.valor_minimo.trim() === "" ? "0" : parseBRL(f.valor_minimo);
+  // Campo intocado: reenvia o original (o campo só exibe 2 casas e truncaria o valor).
+  const minimoIntocado = base !== undefined && f.valor_minimo === decimalToBRLInput(base.valor_minimo);
+  const minimo = minimoIntocado ? base.valor_minimo : f.valor_minimo.trim() === "" ? "0" : parseBRL(f.valor_minimo);
   if (minimo === null) errors.valor_minimo = "Valor inválido";
 
   let taxaAdm: string | null = null;
@@ -132,7 +134,7 @@ function build(f: FormState, base?: ProductData): { body?: Partial<ProductData>;
 
   const carencia = !fundo && f.liquidez === "DIARIA_APOS_CARENCIA" ? f.data_carencia : null;
   const body: Partial<ProductData> = {
-    ...(base ? { id: base.id, ativo: base.ativo, exemplo: base.exemplo } : {}),
+    ...(base ? { id: base.id, ativo: base.ativo, exemplo: base.exemplo, cobertura: base.cobertura } : {}),
     tipo: f.tipo,
     nome: f.nome.trim(),
     emissor: f.emissor.trim(),
@@ -245,6 +247,8 @@ export function ProductForm({ open, onOpenChange, product, plataformas = [] }: P
   });
 
   const onTipo = (tipo: TipoForm) => {
+    setTopErrors([]);
+    setFieldErrors({});
     setF((s) => ({
       ...s,
       tipo,

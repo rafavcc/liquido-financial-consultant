@@ -183,5 +183,53 @@ test("edição preenche o formulário em %, e envia PUT com o id", async () => {
   await waitFor(() => expect(mocked.products.update).toHaveBeenCalled());
   const [id, body] = mocked.products.update.mock.calls[0];
   expect(id).toBe("abc");
-  expect(body).toMatchObject({ id: "abc", taxa: "1.12", valor_minimo: "1000", ativo: false, exemplo: true });
+  expect(body).toMatchObject({ id: "abc", taxa: "1.12", valor_minimo: "1000.00", ativo: false, exemplo: true });
+});
+
+test("edição sem alterar nada reenvia todos os campos idênticos (inclui valor_minimo com 3 casas)", async () => {
+  const user = userEvent.setup();
+  const original = {
+    ...fixtureResult.product, id: "abc", plataforma: "BTG Pactual", emissor: "Banco Z", taxa: "1.125",
+    valor_minimo: "1000.505", liquidez: "DIARIA_APOS_CARENCIA" as const, data_carencia: "2027-06-01",
+    data_vencimento: "2029-05-10", observacoes: "nota", cobertura: "FGC" as const, ativo: true, exemplo: false,
+  };
+  setup({ product: original });
+  await user.click(screen.getByRole("button", { name: "Salvar" }));
+  await waitFor(() => expect(mocked.products.update).toHaveBeenCalled());
+  const [, body] = mocked.products.update.mock.calls[0];
+  expect(body).toEqual({
+    id: "abc", tipo: original.tipo, nome: original.nome, emissor: "Banco Z", plataforma: "BTG Pactual",
+    indexador: original.indexador, taxa: "1.125", data_vencimento: "2029-05-10", valor_minimo: "1000.505",
+    liquidez: "DIARIA_APOS_CARENCIA", data_carencia: "2027-06-01", cobertura: "FGC", ativo: true, exemplo: false,
+    observacoes: "nota", taxa_adm: null, prazo_resgate_dias: null, classe_tributaria: null,
+  });
+});
+
+test("edição de fundo sem alterar nada reenvia campos do fundo idênticos", async () => {
+  const user = userEvent.setup();
+  const fundo = {
+    ...fixtureResult.product, id: "f1", tipo: "FUNDO_RF" as const, nome: "Fundo X", taxa: "1.05", data_vencimento: null,
+    liquidez: "DIARIA" as const, taxa_adm: "0.003", prazo_resgate_dias: 30, classe_tributaria: "CURTO" as const,
+    cobertura: "NENHUMA" as const, valor_minimo: "500",
+  };
+  setup({ product: fundo });
+  await user.click(screen.getByRole("button", { name: "Salvar" }));
+  await waitFor(() => expect(mocked.products.update).toHaveBeenCalled());
+  expect(mocked.products.update.mock.calls[0][1]).toMatchObject({
+    taxa: "1.05", taxa_adm: "0.003", prazo_resgate_dias: 30, classe_tributaria: "CURTO", data_vencimento: null,
+    liquidez: "DIARIA", data_carencia: null, cobertura: "NENHUMA", valor_minimo: "500",
+  });
+});
+
+test("trocar o tipo limpa erros do topo e dos campos", async () => {
+  const user = userEvent.setup();
+  mocked.products.create.mockRejectedValue(new ApiError(422, ["taxa: inválida"]));
+  setup();
+  await preencheBasico(user);
+  await user.type(screen.getByLabelText("Taxa"), "112");
+  await user.click(screen.getByRole("button", { name: "Salvar" }));
+  await screen.findByRole("alert");
+  await user.selectOptions(screen.getByLabelText("Tipo"), "LCA");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.queryByText("inválida")).toBeNull();
 });

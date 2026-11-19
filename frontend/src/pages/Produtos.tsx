@@ -33,7 +33,7 @@ function Switch({ checked, label, disabled, onChange }: { checked: boolean; labe
   );
 }
 
-function describe(p: ProductData): string {
+function resumo(p: ProductData): string {
   const dn = resgateLabel(p);
   return [
     p.plataforma,
@@ -66,7 +66,7 @@ function ManualCard({ p, busy, onToggle, onEdit, onDuplicate, onDelete }: CardPr
             {!p.ativo && <Chip>Inativo</Chip>}
           </h3>
           <p className="mt-1 text-xs leading-5 text-muted">
-            {describe(p)}
+            {resumo(p)}
             {minimo && ` · ${minimo}`}
           </p>
         </div>
