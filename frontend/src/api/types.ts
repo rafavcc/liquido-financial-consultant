@@ -106,6 +106,8 @@ export interface Settings {
   iof_exempt_types: ProductType[];
   come_cotas_longo: Decimal;
   come_cotas_curto: Decimal;
+  ir_fundo_curto_ate_180: Decimal;
+  ir_fundo_curto_acima_180: Decimal;
   custodia_b3_aa: Decimal;
   tesouro_selic_isencao_custodia: Decimal;
   spread_cdi_selic: Decimal;

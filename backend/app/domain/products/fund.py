@@ -49,6 +49,22 @@ class FundoRendaFixa(Product):
             )
 
         today = ctx.today
+        prazo = d.prazo_resgate_dias or 0
+        solicitacao = data_alvo - timedelta(days=prazo)
+        if solicitacao < today:
+            return SimulationResult(
+                product=d,
+                secao=Section.VENCE_DEPOIS,
+                resgatavel=False,
+                valor_investido=valor,
+                alertas=self._common_alerts(valor, ctx, projecao=False)
+                + [
+                    Alert(
+                        code=AlertCode.RESGATE_DN,
+                        message=f"Resgate leva D+{prazo} — o dinheiro não chega até a sua data",
+                    )
+                ],
+            )
         taxa_adm = d.taxa_adm or Decimal(0)
         aliquota_cc = (
             ctx.settings.come_cotas_curto
@@ -63,7 +79,10 @@ class FundoRendaFixa(Product):
         )
 
         ganho_total = bruto + cc_pago - valor
-        taxes = apply_taxes(ganho_total, (data_alvo - today).days, ProductType.FUNDO_RF, ctx.settings)
+        taxes = apply_taxes(
+            ganho_total, (data_alvo - today).days, ProductType.FUNDO_RF, ctx.settings,
+            curto_prazo=d.classe_tributaria == "CURTO",
+        )
         ir = max(Decimal(0), taxes.ir - cc_pago)
         liquido = bruto - taxes.iof - ir
 
@@ -73,8 +92,6 @@ class FundoRendaFixa(Product):
                 message="Fundo sem rentabilidade garantida — rentabilidade-alvo estimada",
             )
         ]
-        prazo = d.prazo_resgate_dias or 0
-        solicitacao = data_alvo - timedelta(days=prazo)
         if prazo > 0:
             alertas.append(
                 Alert(

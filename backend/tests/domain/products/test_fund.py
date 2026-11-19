@@ -101,3 +101,40 @@ def test_admin_fee_exponent_pinned():
     r = fundo(taxa=D("1.0"), taxa_adm=D("0.01")).simulate(D("10000"), ALVO_CURTO, ctx)
     esperado = D("10000") * ctx.index.cdi_factor(TODAY, ALVO_CURTO) * (D("0.99") ** (D(du) / 252))
     assert abs(r.valor_bruto - esperado) < D("0.000001")
+
+
+def test_curto_fund_three_years_taxed_20_percent_on_whole_gain():
+    r = fundo(taxa=D("1.0"), taxa_adm=D("0"), classe="CURTO").simulate(D("10000"), date(2029, 11, 19), ctx)
+    ganho = r.valor_bruto + r.come_cotas - 10000
+    assert r.come_cotas > 0 and r.iof == 0
+    assert abs((r.come_cotas + r.ir) - ganho * D("0.20")) < D("0.05")
+
+
+def test_curto_fund_under_180_days_taxed_22_5_percent():
+    r = fundo(taxa=D("1.0"), taxa_adm=D("0"), classe="CURTO").simulate(D("10000"), date(2027, 3, 15), ctx)
+    ganho = r.valor_bruto + r.come_cotas - 10000 + r.iof
+    assert abs((r.come_cotas + r.ir) - (ganho * D("0.225"))) < D("0.10")
+
+
+def test_curto_rates_come_from_settings():
+    from dataclasses import replace
+
+    from app.domain.settings import Settings
+
+    custom = replace(ctx, settings=Settings(ir_fundo_curto_acima_180=D("0.25")))
+    r = fundo(taxa=D("1.0"), taxa_adm=D("0"), classe="CURTO").simulate(D("10000"), date(2029, 11, 19), custom)
+    ganho = r.valor_bruto + r.come_cotas - 10000
+    assert abs((r.come_cotas + r.ir) - ganho * D("0.25")) < D("0.05")
+
+
+def test_dn_fund_whose_request_date_is_in_the_past_is_not_redeemable():
+    r = fundo(prazo=30).simulate(D("10000"), date(2026, 12, 10), ctx)
+    assert r.secao == Section.VENCE_DEPOIS and not r.resgatavel
+    assert r.valor_liquido is None and r.data_solicitacao_resgate is None
+    msg = next(a.message for a in r.alertas if a.code == AlertCode.RESGATE_DN)
+    assert msg == "Resgate leva D+30 — o dinheiro não chega até a sua data"
+
+
+def test_dn_fund_request_exactly_today_is_still_redeemable():
+    r = fundo(prazo=30).simulate(D("10000"), date(2026, 12, 19), ctx)
+    assert r.secao == Section.VENCE_ATE_DATA and r.data_solicitacao_resgate == TODAY

@@ -32,6 +32,8 @@ const settings: Settings = {
   iof_exempt_types: ["CRA", "LCI", "LCA", "CRI"],
   come_cotas_longo: "0.15",
   come_cotas_curto: "0.20",
+  ir_fundo_curto_ate_180: "0.225",
+  ir_fundo_curto_acima_180: "0.20",
   custodia_b3_aa: "0.0020",
   tesouro_selic_isencao_custodia: "10000",
   spread_cdi_selic: "0.0010",
@@ -294,4 +296,18 @@ test("editar um campo limpa o erro de refresh", async () => {
   await screen.findByText("Fonte fora do ar");
   await userEvent.type(screen.getByLabelText("Custódia B3 (% ao ano)"), "1");
   expect(screen.queryByText("Fonte fora do ar")).toBeNull();
+});
+
+test("IR de fundo de curto prazo é editável e enviado como fração", async () => {
+  setup();
+  const acima = await screen.findByLabelText(/IR de fundo de curto prazo, acima de 180 dias/);
+  expect(acima).toHaveValue("20");
+  expect(screen.getByLabelText(/IR de fundo de curto prazo, até 180 dias/)).toHaveValue("22,5");
+  await userEvent.clear(acima);
+  await userEvent.type(acima, "21");
+  await userEvent.click(salvar());
+  await waitFor(() => expect(mocked.settings.update).toHaveBeenCalled());
+  const sent = mocked.settings.update.mock.calls[0][0];
+  expect(sent.ir_fundo_curto_acima_180).toBe("0.21");
+  expect(sent.ir_fundo_curto_ate_180).toBe("0.225");
 });

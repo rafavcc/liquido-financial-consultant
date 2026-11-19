@@ -45,6 +45,8 @@ class Settings(BaseModel):
     iof_exempt_types: set[ProductType] = Field(default_factory=lambda: set(_ISENTOS))
     come_cotas_longo: Decimal = D("0.15")
     come_cotas_curto: Decimal = D("0.20")
+    ir_fundo_curto_ate_180: Decimal = D("0.225")  # fundos de curto prazo: 22,5% até 180 dias
+    ir_fundo_curto_acima_180: Decimal = D("0.20")  # e 20% depois
     custodia_b3_aa: Decimal = D("0.0020")
     tesouro_selic_isencao_custodia: Decimal = D("10000")
     spread_cdi_selic: Decimal = D("0.0010")
@@ -74,7 +76,9 @@ class Settings(BaseModel):
         if any(a < b for a, b in zip(self.iof_table, self.iof_table[1:])):
             raise ValueError("iof_table deve ser não crescente")
 
-        for name in ("come_cotas_longo", "come_cotas_curto", "custodia_b3_aa", "spread_cdi_selic"):
+        for name in (
+            "come_cotas_longo", "come_cotas_curto", "ir_fundo_curto_ate_180", "ir_fundo_curto_acima_180", "custodia_b3_aa", "spread_cdi_selic",
+        ):
             _check_rate(getattr(self, name), name)
 
         if self.market_cache_ttl_hours < 1:

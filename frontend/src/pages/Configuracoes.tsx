@@ -352,6 +352,10 @@ export function Configuracoes() {
             hint="Cobrado em maio e novembro em fundos de longo prazo." />
           <Box label="Come-cotas de curto prazo" suffix="%" value={form.comeCurto} error={err("come_cotas_curto")} onChange={(v) => edit({ comeCurto: v })}
             hint="Cobrado em maio e novembro em fundos de curto prazo." />
+          <Box label="IR de fundo de curto prazo, até 180 dias" suffix="%" value={form.irCurtoAte180} error={err("ir_fundo_curto_ate_180")} onChange={(v) => edit({ irCurtoAte180: v })}
+            hint="Alíquota final para fundos de curto prazo resgatados em até 180 dias." />
+          <Box label="IR de fundo de curto prazo, acima de 180 dias" suffix="%" value={form.irCurtoAcima180} error={err("ir_fundo_curto_acima_180")} onChange={(v) => edit({ irCurtoAcima180: v })}
+            hint="Alíquota final para fundos de curto prazo após 180 dias." />
         </div>
 
         <div className="space-y-4">

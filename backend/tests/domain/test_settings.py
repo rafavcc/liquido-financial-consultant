@@ -38,3 +38,11 @@ def test_json_roundtrip_decimals_as_strings():
     s = Settings()
     assert Settings.model_validate_json(s.model_dump_json()) == s
     assert '"0.225"' in s.model_dump_json()
+
+
+def test_curto_fund_ir_rates_default_and_validation():
+    s = Settings()
+    assert s.ir_fundo_curto_ate_180 == D("0.225") and s.ir_fundo_curto_acima_180 == D("0.20")
+    for campo in ("ir_fundo_curto_ate_180", "ir_fundo_curto_acima_180"):
+        with pytest.raises(ValueError):
+            Settings(**{campo: D("1.5")})

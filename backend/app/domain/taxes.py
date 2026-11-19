@@ -31,9 +31,16 @@ def _q(v: Decimal) -> Decimal:
     return v.quantize(_CENT, rounding=ROUND_HALF_EVEN)
 
 
-def apply_taxes(gain: Decimal, days: int, tipo: ProductType, s: Settings) -> TaxBreakdown:
+def ir_rate_fundo_curto(days: int, s: Settings) -> Decimal:
+    return s.ir_fundo_curto_ate_180 if days <= 180 else s.ir_fundo_curto_acima_180
+
+
+def apply_taxes(
+    gain: Decimal, days: int, tipo: ProductType, s: Settings, curto_prazo: bool = False
+) -> TaxBreakdown:
     if gain <= 0:
         return TaxBreakdown(iof=Decimal(0), ir=Decimal(0))
     iof = Decimal(0) if tipo in s.iof_exempt_types else _q(gain * iof_rate(days, s))
-    ir = Decimal(0) if tipo in s.ir_exempt_types else _q((gain - iof) * ir_rate(days, s))
+    rate = ir_rate_fundo_curto(days, s) if curto_prazo else ir_rate(days, s)
+    ir = Decimal(0) if tipo in s.ir_exempt_types else _q((gain - iof) * rate)
     return TaxBreakdown(iof=iof, ir=ir)

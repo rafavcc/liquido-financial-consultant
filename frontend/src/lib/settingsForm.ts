@@ -19,6 +19,8 @@ export interface SettingsForm {
   iofExempt: ProductType[];
   comeLongo: string;
   comeCurto: string;
+  irCurtoAte180: string;
+  irCurtoAcima180: string;
   custodia: string;
   isencaoSelic: string;
   spread: string;
@@ -37,6 +39,8 @@ export function toForm(s: Settings): SettingsForm {
     iofExempt: [...s.iof_exempt_types],
     comeLongo: fractionToPercent(s.come_cotas_longo),
     comeCurto: fractionToPercent(s.come_cotas_curto),
+    irCurtoAte180: fractionToPercent(s.ir_fundo_curto_ate_180),
+    irCurtoAcima180: fractionToPercent(s.ir_fundo_curto_acima_180),
     custodia: fractionToPercent(s.custodia_b3_aa),
     isencaoSelic: decimalToBRLInput(s.tesouro_selic_isencao_custodia),
     spread: fractionToPercent(s.spread_cdi_selic),
@@ -106,6 +110,8 @@ export function buildSettings(f: SettingsForm, orig: Settings): BuildResult {
   };
   const come_cotas_longo = rate(f.comeLongo, orig.come_cotas_longo, "come_cotas_longo");
   const come_cotas_curto = rate(f.comeCurto, orig.come_cotas_curto, "come_cotas_curto");
+  const ir_fundo_curto_ate_180 = rate(f.irCurtoAte180, orig.ir_fundo_curto_ate_180, "ir_fundo_curto_ate_180");
+  const ir_fundo_curto_acima_180 = rate(f.irCurtoAcima180, orig.ir_fundo_curto_acima_180, "ir_fundo_curto_acima_180");
   const custodia_b3_aa = rate(f.custodia, orig.custodia_b3_aa, "custodia_b3_aa");
   const spread_cdi_selic = rate(f.spread, orig.spread_cdi_selic, "spread_cdi_selic");
 
@@ -148,6 +154,8 @@ export function buildSettings(f: SettingsForm, orig: Settings): BuildResult {
     iof_exempt_types: exempt(f.iofExempt, orig.iof_exempt_types),
     come_cotas_longo,
     come_cotas_curto,
+    ir_fundo_curto_ate_180,
+    ir_fundo_curto_acima_180,
     custodia_b3_aa,
     tesouro_selic_isencao_custodia: isencao ?? "",
     spread_cdi_selic,
@@ -183,6 +191,8 @@ export function fieldLabel(path: string): string {
     case "iof_exempt_types": return "Isentos de IOF";
     case "come_cotas_longo": return "Come-cotas (longo prazo)";
     case "come_cotas_curto": return "Come-cotas (curto prazo)";
+    case "ir_fundo_curto_ate_180": return "IR de fundo de curto prazo (até 180 dias)";
+    case "ir_fundo_curto_acima_180": return "IR de fundo de curto prazo (acima de 180 dias)";
     case "custodia_b3_aa": return "Custódia B3";
     case "tesouro_selic_isencao_custodia": return "Isenção de custódia do Tesouro Selic";
     case "spread_cdi_selic": return "Spread do CDI sobre a Selic";
@@ -199,7 +209,7 @@ export type GrupoId = "tributacao" | "custos" | "projecoes" | "dados" | "alertas
 
 export function fieldGroup(path: string): GrupoId | null {
   const head = path.split(".")[0];
-  if (["ir_brackets", "iof_table", "ir_exempt_types", "iof_exempt_types", "come_cotas_longo", "come_cotas_curto"].includes(head)) return "tributacao";
+  if (["ir_brackets", "iof_table", "ir_exempt_types", "iof_exempt_types", "come_cotas_longo", "come_cotas_curto", "ir_fundo_curto_ate_180", "ir_fundo_curto_acima_180"].includes(head)) return "tributacao";
   if (["custodia_b3_aa", "tesouro_selic_isencao_custodia"].includes(head)) return "custos";
   if (["projection_mode", "manual_selic_by_year", "manual_ipca_by_year", "spread_cdi_selic"].includes(head)) return "projecoes";
   if (head === "market_cache_ttl_hours") return "dados";
