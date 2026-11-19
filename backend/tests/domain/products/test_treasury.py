@@ -82,6 +82,10 @@ def test_ntnb_coupons_idle_and_taxed():
     # cupons de 2027..2035 recebidos e parados; IR descontado em cada um; dias_parado > 0
     assert r.secao == Section.VENCE_ATE_DATA and r.ir > 0 and AlertCode.PROJECAO in codes(r)
     assert r.dias_parado == 17
+    # 2027-05-15 .. 2035-05-15 (inclui o cupom do vencimento) = 17 cupons
+    assert len(flows(ProductType.TESOURO_IPCA_JUROS, date(2035, 5, 15), TODAY)) == 17
+    # cupons tributados cheios (sem abater custo): IR acima de 15% sobre todo o ganho bruto
+    assert r.ir > D("0.15") * (r.valor_bruto - r.valor_investido)
 
 
 def test_selic_custody_exemption():
@@ -115,3 +119,30 @@ def test_renda_mais_flags_simplified_model():
     )
     r = build_treasury(q).simulate(D("10000"), date(2040, 1, 2), ctx)
     assert AlertCode.MODELO_SIMPLIFICADO in codes(r) and AlertCode.PROJECAO in codes(r)
+
+
+def _installment_quote(tipo, venc):
+    return TesouroQuote(
+        tipo=tipo, vencimento=venc, data_base=TODAY, taxa_compra=D("0.0700"),
+        taxa_venda=D("0.0710"), pu_compra=D("1000"), pu_venda=D("990"),
+    )
+
+
+def test_renda_mais_ir_deducts_pro_rata_cost_basis():
+    q = _installment_quote("Tesouro Renda+ Aposentadoria Extra", date(2050, 1, 1))
+    r = build_treasury(q).simulate(D("10000"), date(2040, 1, 2), ctx)  # saída antecipada em plena fase de pagamento
+    assert r.secao == Section.VENCE_DEPOIS
+    assert 0 < r.ir < D("0.225") * (r.valor_bruto - r.valor_investido)
+
+
+def test_educa_mais_to_maturity_ir_deducts_cost_basis():
+    q = _installment_quote("Tesouro Educa+", date(2033, 1, 1))
+    r = build_treasury(q).simulate(D("10000"), date(2033, 3, 1), ctx)
+    assert r.secao == Section.VENCE_ATE_DATA
+    assert 0 < r.ir < D("0.225") * (r.valor_bruto - r.valor_investido)
+
+
+def test_expired_quote_is_unavailable_not_a_crash():
+    q = q_selic_2029.model_copy(update={"vencimento": date(2026, 11, 10)})
+    r = build_treasury(q).simulate(D("10000"), date(2027, 3, 5), ctx)
+    assert r.secao == Section.INDISPONIVEL and AlertCode.SEM_DADOS_MERCADO in codes(r)

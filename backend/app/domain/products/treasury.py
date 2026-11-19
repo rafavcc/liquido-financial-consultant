@@ -135,6 +135,10 @@ class TreasuryProduct(Product):
         sem_dados = "Sem dados de mercado para calcular"
         if needs_index(d.indexador) and ctx.index is None:
             return self._unavailable(valor, AlertCode.SEM_DADOS_MERCADO, sem_dados, ctx)
+        if not flows(d.tipo, d.data_vencimento, ctx.today):
+            return self._unavailable(
+                valor, AlertCode.SEM_DADOS_MERCADO, "Título vencido ou sem fluxos futuros", ctx
+            )
         try:
             return self._simulate(valor, data_alvo, ctx)
         except ProjecaoIndisponivel:
@@ -177,19 +181,19 @@ class TreasuryProduct(Product):
         pay_date = {fd: cal.adjust_next(fd) for fd, _ in all_flows}
         pontos = self._series_dates(today, saida, cal)
         face = self._face_function(
-            [pay_date[fd] for fd, _ in all_flows] + pontos, all_flows, ctx
+            [pay_date[fd] for fd, _ in all_flows if pay_date[fd] <= saida] + pontos, all_flows, ctx
         )
 
         principal = _ONE if tipo not in _INSTALLMENTS else Decimal(0)
         last_flow_date = all_flows[-1][0] if all_flows else None
-        received: list[tuple[date, Decimal]] = []  # (data de pagamento, valor bruto)
+        received: list[tuple[date, Decimal, Decimal]] = []  # (pagamento, valor bruto, fração f)
         for fd, f in all_flows:
             pay = pay_date[fd]
             if pay > saida:
                 continue
             part = f - principal if (maturity and fd == last_flow_date) else f
             if part > 0:
-                received.append((pay, qtd * face(pay) * part))
+                received.append((pay, qtd * face(pay) * part, part))
 
         if maturity:
             exit_value = qtd * face(venc) * principal
@@ -197,16 +201,22 @@ class TreasuryProduct(Product):
             remaining = [(fd, f) for fd, f in all_flows if pay_date[fd] > saida]
             exit_value = qtd * face(saida) * pv_factor(remaining, q.taxa_venda, saida, cal)
 
+        # Renda+/Educa+: custo rateado entre as parcelas; cupons de NTN-F/NTN-B são tributados cheios.
+        total_f = sum((f for _, f in all_flows), Decimal(0))
         iof = ir = Decimal(0)
-        for pay, amount in received:
-            t = apply_taxes(amount, (pay - today).days, d.tipo, settings)
+        basis_received = Decimal(0)
+        for pay, amount, f in received:
+            basis = investido * f / total_f if tipo in _INSTALLMENTS else Decimal(0)
+            basis_received += basis
+            t = apply_taxes(max(Decimal(0), amount - basis), (pay - today).days, d.tipo, settings)
             iof += t.iof
             ir += t.ir
-        t = apply_taxes(exit_value - investido, (saida - today).days, d.tipo, settings)
+        exit_cost = investido - basis_received if tipo in _INSTALLMENTS else investido
+        t = apply_taxes(exit_value - exit_cost, (saida - today).days, d.tipo, settings)
         iof += t.iof
         ir += t.ir
 
-        bruto = exit_value + sum((a for _, a in received), Decimal(0))
+        bruto = exit_value + sum((a for _, a, _ in received), Decimal(0))
         base = (investido + exit_value) / 2
         if tipo == ProductType.TESOURO_SELIC:
             base = max(Decimal(0), base - settings.tesouro_selic_isencao_custodia)
@@ -219,7 +229,7 @@ class TreasuryProduct(Product):
         for p in pontos[:-1]:
             restantes = [(fd, f) for fd, f in all_flows if pay_date[fd] > p]
             posicao = qtd * face(p) * pv_factor(restantes, q.taxa_compra, p, cal)
-            recebido = sum((a for pay, a in received if pay <= p), Decimal(0))
+            recebido = sum((a for pay, a, _ in received if pay <= p), Decimal(0))
             serie.append(SeriePoint(data=p, valor_bruto=posicao + recebido))
         serie.append(SeriePoint(data=saida, valor_bruto=bruto))
 
