@@ -96,6 +96,18 @@ def pv_factor(fluxos: list[Flow], rate: Decimal, ref: date, cal: BusinessCalenda
     return total
 
 
+_COMMERCIAL_NAME = {
+    # (rótulo comercial, anos entre o ano comercial e o ano do último pagamento)
+    ProductType.TESOURO_RENDA_MAIS: ("Tesouro Renda+", 19),
+    ProductType.TESOURO_EDUCA_MAIS: ("Tesouro Educa+", 4),
+}
+
+
+def _commercial_name(tipo: ProductType, q: TesouroQuote) -> str:
+    label, offset = _COMMERCIAL_NAME.get(tipo, (q.tipo, 0))
+    return f"{label} {q.vencimento.year - offset}"
+
+
 def build_treasury(q: TesouroQuote) -> "TreasuryProduct":
     tipo = TIPO_MAP[q.tipo]
     if tipo in _PRE:
@@ -107,7 +119,7 @@ def build_treasury(q: TesouroQuote) -> "TreasuryProduct":
     data = ProductData(
         id=f"tesouro-{_slug(q.tipo)}-{q.vencimento.isoformat()}",
         tipo=tipo,
-        nome=f"{q.tipo} {q.vencimento.year}",
+        nome=_commercial_name(tipo, q),
         emissor="Tesouro Nacional",
         plataforma="Tesouro Direto",
         indexador=indexador,

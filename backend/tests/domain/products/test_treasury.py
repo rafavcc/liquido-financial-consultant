@@ -161,3 +161,14 @@ def test_leftover_cash_is_kept_idle_and_counted_in_net_value():
 def test_no_leftover_when_amount_is_exact_multiple():
     r = build_treasury(q_ltn_2032).simulate(D("485.38"), date(2028, 6, 1), ctx)
     assert r.sobra == 0
+
+
+def test_renda_and_educa_use_commercial_year_in_name():
+    def nome(tipo, venc):
+        q = TesouroQuote(tipo=tipo, vencimento=venc, data_base=TODAY, taxa_compra=D("0.07"),
+                         taxa_venda=D("0.071"), pu_compra=D("500"), pu_venda=D("499"))
+        return build_treasury(q).data
+    renda = nome("Tesouro Renda+ Aposentadoria Extra", date(2084, 12, 15))
+    assert renda.nome == "Tesouro Renda+ 2065" and renda.id.endswith("2084-12-15")
+    assert nome("Tesouro Educa+", date(2030, 12, 15)).nome == "Tesouro Educa+ 2026"
+    assert nome("Tesouro Prefixado", date(2030, 1, 1)).nome == "Tesouro Prefixado 2030"
