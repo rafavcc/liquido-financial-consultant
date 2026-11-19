@@ -10,9 +10,13 @@ git pull --ff-only
 (cd frontend && npm ci && npm run build)
 sudo systemctl restart liquido
 
+# Usa a mesma porta configurada na instalação.
+PORT="$(systemctl cat liquido 2>/dev/null | sed -n 's/.*--port \([0-9]\+\).*/\1/p' | head -1)"
+PORT="${PORT:-8456}"
+
 ok=0
 for _ in $(seq 1 30); do
-  if curl -fsS http://localhost:8000/api/health; then ok=1; break; fi
+  if curl -fsS "http://127.0.0.1:$PORT/api/health"; then ok=1; break; fi
   sleep 1
 done
 echo

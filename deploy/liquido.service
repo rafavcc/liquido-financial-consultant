@@ -9,7 +9,7 @@ User={USER}
 WorkingDirectory={APP_DIR}/backend
 Environment=LIQUIDO_DB={APP_DIR}/backend/data/liquido.db
 Environment=LIQUIDO_STATIC_DIR={APP_DIR}/frontend/dist
-ExecStart={APP_DIR}/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+ExecStart={APP_DIR}/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port {PORT}
 Restart=on-failure
 RestartSec=5
 

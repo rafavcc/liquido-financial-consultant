@@ -26,6 +26,14 @@ cd liquido
 
 O script confere as ferramentas, instala o que falta do projeto, gera a tela, cria o serviço `liquido` no systemd e publica o app no Tailscale. Ele pede a senha de administrador (`sudo`) só para instalar o serviço e configurar o Tailscale. No fim mostra o endereço, algo como `https://meu-servidor.minha-rede.ts.net`. Pode rodar de novo sem medo.
 
+O serviço escuta só localmente na porta **8456** (`127.0.0.1:8456`). Se ela estiver ocupada, escolha outra:
+
+```bash
+LIQUIDO_PORT=9000 ./deploy/install.sh
+```
+
+Se o endereço https padrão do servidor no Tailscale já publica outro serviço, o instalador não mexe nele: o Liquido fica em `https://meu-servidor.minha-rede.ts.net:8456` (a mesma porta do serviço).
+
 ## Atualização
 
 ```bash
