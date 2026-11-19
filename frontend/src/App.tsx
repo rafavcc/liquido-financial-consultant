@@ -1,9 +1,11 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Comparador } from "./pages/Comparador";
 import { Configuracoes } from "./pages/Configuracoes";
-import { Mercado } from "./pages/Mercado";
 import { Produtos } from "./pages/Produtos";
+
+const Mercado = lazy(() => import("./pages/Mercado").then((m) => ({ default: m.Mercado })));
 
 const Soon = ({ title }: { title: string }) => (
   <div className="py-16 text-center">
@@ -15,13 +17,15 @@ const Soon = ({ title }: { title: string }) => (
 export default function App() {
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Comparador />} />
-        <Route path="/produtos" element={<Produtos />} />
-        <Route path="/configuracoes" element={<Configuracoes />} />
-        <Route path="/mercado" element={<Mercado />} />
-        <Route path="*" element={<Soon title="Página não encontrada" />} />
-      </Routes>
+      <Suspense fallback={<p className="py-16 text-center text-sm text-muted">Carregando…</p>}>
+        <Routes>
+          <Route path="/" element={<Comparador />} />
+          <Route path="/produtos" element={<Produtos />} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
+          <Route path="/mercado" element={<Mercado />} />
+          <Route path="*" element={<Soon title="Página não encontrada" />} />
+        </Routes>
+      </Suspense>
     </Layout>
   );
 }

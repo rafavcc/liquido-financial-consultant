@@ -15,9 +15,11 @@ class BusinessCalendar:
     def _to_date(d: object) -> date:
         return d if type(d) is date else pd.Timestamp(d).date()
 
+    @lru_cache(maxsize=65536)  # noqa: B019 - o calendário é singleton; chamadas repetidas dominam o custo
     def is_business_day(self, d: date) -> bool:
         return bool(self._cal.isbizday(d))
 
+    @lru_cache(maxsize=65536)  # noqa: B019
     def business_days_between(self, start: date, end: date) -> int:
         if end <= start:
             return 0

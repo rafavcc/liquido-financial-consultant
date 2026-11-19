@@ -8,3 +8,5 @@ frontend/dist/
 __pycache__/
 *.db
 *.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/

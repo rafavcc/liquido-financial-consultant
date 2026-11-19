@@ -1,10 +1,13 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { lazy, Suspense } from "react";
 import type { MarketSummary, ProductType, SimulationResult } from "../api/types";
 import { subtractMoney } from "../lib/money";
 import { formatBRL, formatDate, formatPct } from "../lib/format";
 import { ALERT_META, indexLabel, isIsento, resgateLabel, tipoLabel } from "../lib/labels";
 import { TONE } from "./AlertBadge";
-import { EvolutionChart } from "./EvolutionChart";
+
+// recharts é pesado: carregado só quando o detalhe é aberto
+const EvolutionChart = lazy(() => import("./EvolutionChart").then((m) => ({ default: m.EvolutionChart })));
 
 interface Props {
   result: SimulationResult;
@@ -149,7 +152,9 @@ export function ProductDetail({ result: r, mercado, isentoTypes, open, onOpenCha
 
                 <section aria-label="Evolução">
                   <H>Evolução do valor bruto</H>
-                  <EvolutionChart serie={r.serie} />
+                  <Suspense fallback={<div className="h-56 animate-pulse rounded-xl bg-subtle" aria-hidden="true" />}>
+                    <EvolutionChart serie={r.serie} />
+                  </Suspense>
                 </section>
               </>
             ) : (
