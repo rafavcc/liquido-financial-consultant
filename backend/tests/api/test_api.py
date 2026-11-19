@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 from decimal import Decimal as D
 
@@ -59,11 +60,13 @@ def test_first_run_no_network_no_cache(tmp_path):
     assert set(body["mercado"]["errors"]) == {"bcb", "focus", "tesouro"}
     assert body["mercado"]["fonte_projecao"] is None and body["mercado"]["projecao"] == []
     assert any(x["product"]["indexador"] == "PRE" for x in body["vence_ate_data"])
-    assert body["indisponiveis"]
+    visiveis = body["vence_ate_data"] + body["vence_depois"]
+    assert all(x["product"]["indexador"] == "PRE" for x in visiveis)
+    nao_pre = [p["id"] for p in client.get("/api/products").json() if p["indexador"] != "PRE"]
+    indisp = {x["product"]["id"]: x for x in body["indisponiveis"]}
+    assert set(nao_pre) <= set(indisp)
     assert all(
-        any(a["code"] == "SEM_DADOS_MERCADO" for a in x["alertas"])
-        for x in body["indisponiveis"]
-        if x["product"]["indexador"] != "PRE"
+        any(a["code"] == "SEM_DADOS_MERCADO" for a in indisp[i]["alertas"]) for i in nao_pre
     )
 
 
@@ -81,7 +84,7 @@ def test_products_crud_and_validation(client_fixtures):
     c = client_fixtures
     assert len(c.get("/api/products").json()) == 13
     r = c.post("/api/products", json=_novo())
-    assert r.status_code == 200
+    assert r.status_code == 201
     novo = r.json()
     assert novo["id"] and novo["exemplo"] is False
     assert any(p["id"] == novo["id"] for p in c.get("/api/products").json())
@@ -110,6 +113,43 @@ def test_products_crud_and_validation(client_fixtures):
 
     tesouro = c.get("/api/products/tesouro").json()
     assert tesouro and all(p["tipo"].startswith("TESOURO_") for p in tesouro)
+
+
+def test_create_without_id_forces_exemplo_false(client_fixtures):
+    c = client_fixtures
+    corpo = _novo(exemplo=True)
+    del corpo["id"]
+    r = c.post("/api/products", json=corpo)
+    assert r.status_code == 201
+    assert uuid.UUID(r.json()["id"]) and r.json()["exemplo"] is False
+
+
+def test_validation_messages_are_pt_br(client_fixtures):
+    c = client_fixtures
+    r = c.post("/api/simulate", json={"valor": "abc", "data_alvo": "2029-06-15"})
+    assert r.status_code == 422 and r.json()["detail"] == ["valor: número inválido"]
+    r = c.post("/api/simulate", json={"valor": "10", "data_alvo": "xx"})
+    assert r.json()["detail"] == ["data_alvo: data inválida"]
+    r = c.post("/api/simulate", json={})
+    assert r.json()["detail"] == ["valor: campo obrigatório", "data_alvo: campo obrigatório"]
+    corpo = _novo(indexador="XYZ", prazo_resgate_dias="a")
+    del corpo["nome"]
+    r = c.post("/api/products", json=corpo)
+    assert sorted(r.json()["detail"]) == [
+        "indexador: valor inválido", "nome: campo obrigatório", "prazo_resgate_dias: número inteiro inválido",
+    ]
+
+
+def test_corrupted_stored_product_does_not_break_simulate(client_fixtures):
+    c = client_fixtures
+    conn = c.app.state.container.products._conn
+    conn.execute("INSERT INTO products (id, payload) VALUES ('corrompido', '{\"id\": 1')")
+    conn.commit()
+    r = c.post("/api/simulate", json=BODY)
+    assert r.status_code == 200
+    ids = [x["product"]["id"] for k in ("vence_ate_data", "vence_depois", "indisponiveis") for x in r.json()[k]]
+    assert "corrompido" not in ids and "exemplo-01" in ids
+    assert len(c.get("/api/products").json()) == 13
 
 
 def test_settings_roundtrip_and_reset(client_fixtures):
@@ -145,8 +185,11 @@ def test_seed_once(tmp_path):
 
 def test_seed_items_pass_validation(tmp_path):
     TestClient(create_app(tmp_path / "db.sqlite", fetchers=AlwaysFailFetchers(), today_fn=lambda: TODAY))
-    repo = ProductRepository(db.connect(tmp_path / "db.sqlite"))
-    produtos = repo.list()
+    conn = db.connect(tmp_path / "db.sqlite")
+    try:
+        produtos = ProductRepository(conn).list()
+    finally:
+        conn.close()
     assert len(produtos) == 13
     for p in produtos:
         assert validate_product(p, Settings(), date(2026, 11, 19)) == [], p.id

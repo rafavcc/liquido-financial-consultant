@@ -87,7 +87,7 @@ _DEFAULT_COVERAGE = {
 
 
 class ProductData(BaseModel):
-    id: str
+    id: str = ""
     tipo: ProductType
     nome: str
     emissor: str

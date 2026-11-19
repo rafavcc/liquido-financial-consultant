@@ -29,10 +29,13 @@ class Container:
     static_dir: Path | None
     # uma conexão SQLite compartilhada entre threads: todo acesso (inclusive o do MarketService) sob este lock
     lock: threading.RLock = field(default_factory=threading.RLock)
+    # single-flight da busca de rede; nunca é segurado junto com `lock` durante I/O de rede
+    snapshot_lock: threading.Lock = field(default_factory=threading.Lock)
 
     def snapshot(self, force: bool = False) -> tuple[Settings, MarketSnapshot]:
-        with self.lock:  # single-flight: uma busca de rede por vez
-            settings = self.settings.get()
+        with self.snapshot_lock:
+            with self.lock:
+                settings = self.settings.get()
             return settings, self.market.get_snapshot(settings.market_cache_ttl_hours, force=force)
 
     def context(self, settings: Settings, snapshot: MarketSnapshot) -> SimContext:
@@ -41,6 +44,25 @@ class Container:
         return SimContext(
             today=today, cal=cal, settings=settings, index=IndexPath.build(snapshot, settings, cal, today)
         )
+
+
+class LockedMarketCache:
+    """Serializa o acesso do MarketService à conexão compartilhada, sem segurar o lock na rede."""
+
+    def __init__(self, inner: MarketCacheRepository, lock: threading.RLock) -> None:
+        self._inner, self._lock = inner, lock
+
+    def load(self, source: str):
+        with self._lock:
+            return self._inner.load(source)
+
+    def save(self, source: str, payload: dict, fetched_at: datetime) -> None:
+        with self._lock:
+            self._inner.save(source, payload, fetched_at)
+
+    def save_error(self, source: str, error: str, failed_at: datetime) -> None:
+        with self._lock:
+            self._inner.save_error(source, error, failed_at)
 
 
 def _seed(products: ProductRepository, settings: SettingsRepository) -> None:
@@ -72,8 +94,10 @@ def build_container(
         static_dir = Path(os.environ.get("LIQUIDO_STATIC_DIR", BACKEND_DIR.parent / "frontend" / "dist"))
     products, settings = ProductRepository(conn), SettingsRepository(conn)
     _seed(products, settings)
-    market = MarketService(MarketCacheRepository(conn), fetchers, lambda: datetime.now(UTC))
-    return Container(products, settings, market, today_fn, static_dir)
+    lock = threading.RLock()
+    cache = LockedMarketCache(MarketCacheRepository(conn), lock)
+    market = MarketService(cache, fetchers, lambda: datetime.now(UTC))
+    return Container(products, settings, market, today_fn, static_dir, lock=lock)
 
 
 def get_container(request: Request) -> Container:

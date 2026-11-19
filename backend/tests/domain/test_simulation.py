@@ -1,10 +1,10 @@
 from datetime import date
 from decimal import Decimal as D
 
-from app.domain.products.base import AlertCode, Indexer, Liquidity, ProductType, Section
+from app.domain.products.base import AlertCode, Indexer, Liquidity, Section
 from app.domain.products.factory import build_product
 from app.domain.simulation import simulate_all
-from tests.domain.products.product_helpers import TODAY, ctx, make
+from tests.domain.products.product_helpers import ctx, make
 
 ALVO = date(2029, 6, 15)
 
@@ -50,4 +50,3 @@ def test_one_broken_product_does_not_break_all():
     assert indisp[0].secao == Section.INDISPONIVEL
     assert indisp[0].alertas[0].code == AlertCode.ERRO_CALCULO
     assert indisp[0].alertas[0].message == "Erro ao calcular este produto"
-    assert TODAY < ALVO and ProductType.CDB

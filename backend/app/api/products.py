@@ -33,9 +33,10 @@ def list_tesouro(c: Container = Depends(get_container)) -> list[ProductData]:
     return [p.data for p in TesouroSource().load(ctx, snapshot)]
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_product(data: ProductData, c: Container = Depends(get_container)) -> ProductData:
     with c.lock:
+        data = data.model_copy(update={"exemplo": False})
         _validate(c, data)
         if data.id and c.products.get(data.id) is not None:
             raise HTTPException(409, "Já existe um produto com este id")

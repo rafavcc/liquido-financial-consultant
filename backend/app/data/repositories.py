@@ -1,11 +1,16 @@
 import json
+import logging
 import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+from pydantic import ValidationError
+
 from app.domain.products.base import ProductData
 from app.domain.settings import Settings
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -58,8 +63,14 @@ class ProductRepository:
         self._conn = conn
 
     def list(self) -> list[ProductData]:
-        rows = self._conn.execute("SELECT payload FROM products ORDER BY rowid").fetchall()
-        return [ProductData.model_validate_json(r[0]) for r in rows]
+        rows = self._conn.execute("SELECT id, payload FROM products ORDER BY rowid").fetchall()
+        out = []
+        for id, payload in rows:
+            try:
+                out.append(ProductData.model_validate_json(payload))
+            except ValidationError:  # um registro corrompido não pode derrubar a listagem
+                log.exception("Produto %s com dados inválidos foi ignorado", id)
+        return out
 
     def get(self, id: str) -> ProductData | None:
         row = self._conn.execute("SELECT payload FROM products WHERE id = ?", (id,)).fetchone()
