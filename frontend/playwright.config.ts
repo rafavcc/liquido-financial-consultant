@@ -13,7 +13,6 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,
-  expect: { timeout: 30_000 }, // a primeira simulação com os títulos do Tesouro é lenta
   reporter: "list",
   use: { baseURL: `http://127.0.0.1:${PORT}`, trace: "off" },
   projects: [
