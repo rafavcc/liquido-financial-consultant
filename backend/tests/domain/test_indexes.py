@@ -81,3 +81,15 @@ def test_no_ipca_data_raises():
     p = IndexPath.build(snap, Settings(), cal, TODAY)
     with pytest.raises(ValueError, match="sem projeção de IPCA"):
         p.ipca_month(2027, 1)
+
+
+def test_manual_mode_without_surviving_anchor_returns_none():
+    s = Settings(projection_mode="manual", manual_selic_by_year={2025: D("0.10")}, manual_ipca_by_year={2027: D("0.04")})
+    assert IndexPath.build(MarketSnapshot.empty(), s, cal, TODAY) is None
+
+
+def test_manual_mode_uses_selic_meta_as_today_anchor():
+    s = Settings(projection_mode="manual", manual_selic_by_year={2027: D("0.10")}, manual_ipca_by_year={2027: D("0.04")})
+    p = IndexPath.build(flat_snapshot(), s, cal, TODAY)
+    assert p.selic_aa(TODAY) == D("0.1375")
+    assert p.selic_aa(date(2027, 12, 31)) == D("0.10")

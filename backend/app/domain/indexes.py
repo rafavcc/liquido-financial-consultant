@@ -1,13 +1,12 @@
 from bisect import bisect_right
 from datetime import date, timedelta
-from decimal import Decimal, getcontext
+from decimal import Decimal
 
 from app.data.market import MarketSnapshot
 from app.domain.calendar import BusinessCalendar, get_calendar
 from app.domain.settings import Settings
 
 D = Decimal
-getcontext().prec = 28
 
 _DAYS_YEAR = D(252)
 _ONE = D(1)
@@ -65,6 +64,8 @@ class IndexPath:
             end = date(year, 12, 31)
             if end > today:
                 anchors.append((end, value))
+        if not anchors:
+            return None
         return cls(anchors, ipca_monthly, ipca_annual, settings.spread_cdi_selic, fonte, cal, today)
 
     # --- Selic / CDI -------------------------------------------------------------------------
