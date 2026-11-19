@@ -215,10 +215,23 @@ test("edição de fundo sem alterar nada reenvia campos do fundo idênticos", as
   setup({ product: fundo });
   await user.click(screen.getByRole("button", { name: "Salvar" }));
   await waitFor(() => expect(mocked.products.update).toHaveBeenCalled());
-  expect(mocked.products.update.mock.calls[0][1]).toMatchObject({
-    taxa: "1.05", taxa_adm: "0.003", prazo_resgate_dias: 30, classe_tributaria: "CURTO", data_vencimento: null,
-    liquidez: "DIARIA", data_carencia: null, cobertura: "NENHUMA", valor_minimo: "500",
+  expect(mocked.products.update.mock.calls[0][1]).toEqual({
+    id: "f1", tipo: "FUNDO_RF", nome: "Fundo X", emissor: fundo.emissor, plataforma: fundo.plataforma,
+    indexador: fundo.indexador, taxa: "1.05", data_vencimento: null, valor_minimo: "500", liquidez: "DIARIA",
+    data_carencia: null, cobertura: "NENHUMA", ativo: true, exemplo: false, observacoes: fundo.observacoes,
+    taxa_adm: "0.003", prazo_resgate_dias: 30, classe_tributaria: "CURTO",
   });
+});
+
+test("editar CRI trocando para CDB não envia cobertura (backend deriva)", async () => {
+  const user = userEvent.setup();
+  setup({ product: { ...fixtureResult.product, id: "c1", tipo: "CRI", cobertura: "NENHUMA" } });
+  await user.selectOptions(screen.getByLabelText("Tipo"), "CDB");
+  await user.click(screen.getByRole("button", { name: "Salvar" }));
+  await waitFor(() => expect(mocked.products.update).toHaveBeenCalled());
+  const body = mocked.products.update.mock.calls[0][1];
+  expect(body.tipo).toBe("CDB");
+  expect(body).not.toHaveProperty("cobertura");
 });
 
 test("trocar o tipo limpa erros do topo e dos campos", async () => {

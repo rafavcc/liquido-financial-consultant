@@ -134,7 +134,9 @@ function build(f: FormState, base?: ProductData): { body?: Partial<ProductData>;
 
   const carencia = !fundo && f.liquidez === "DIARIA_APOS_CARENCIA" ? f.data_carencia : null;
   const body: Partial<ProductData> = {
-    ...(base ? { id: base.id, ativo: base.ativo, exemplo: base.exemplo, cobertura: base.cobertura } : {}),
+    ...(base ? { id: base.id, ativo: base.ativo, exemplo: base.exemplo } : {}),
+    // Cobertura só se mantém quando o tipo não mudou; senão o backend deriva do novo tipo.
+    ...(base && base.tipo === f.tipo ? { cobertura: base.cobertura } : {}),
     tipo: f.tipo,
     nome: f.nome.trim(),
     emissor: f.emissor.trim(),
