@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS market_cache (
 """
 
 
-def connect(path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(str(path))
+def connect(path: Path, check_same_thread: bool = True) -> sqlite3.Connection:
+    conn = sqlite3.connect(str(path), check_same_thread=check_same_thread)
     conn.executescript(_SCHEMA)
     columns = {row[1] for row in conn.execute("PRAGMA table_info(market_cache)")}
     if "failed_at" not in columns:  # bancos criados antes do cooldown
