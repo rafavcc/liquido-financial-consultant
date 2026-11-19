@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from functools import lru_cache
 
+import pandas as pd
 from bizdays import Calendar
 
 
@@ -9,6 +10,10 @@ class BusinessCalendar:
 
     def __init__(self, calendar: Calendar) -> None:
         self._cal = calendar
+
+    @staticmethod
+    def _to_date(d: object) -> date:
+        return d if type(d) is date else pd.Timestamp(d).date()
 
     def is_business_day(self, d: date) -> bool:
         return bool(self._cal.isbizday(d))
@@ -28,10 +33,10 @@ class BusinessCalendar:
         ]
 
     def adjust_next(self, d: date) -> date:
-        return self._cal.adjust_next(d)
+        return self._to_date(self._cal.adjust_next(d))
 
     def add_business_days(self, d: date, n: int) -> date:
-        return self._cal.offset(d, n)
+        return self._to_date(self._cal.offset(d, n))
 
     def last_business_day_of_month(self, year: int, month: int) -> date:
         first_next = date(year + (month == 12), month % 12 + 1, 1)

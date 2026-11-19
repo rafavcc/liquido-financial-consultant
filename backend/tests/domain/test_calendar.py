@@ -28,3 +28,11 @@ def test_adjust_and_month_end():
     assert cal.last_business_day_of_month(2027, 5) == date(2027, 5, 31)
     assert cal.last_business_day_of_month(2026, 5) == date(2026, 5, 29)
     assert cal.add_business_days(date(2026, 11, 19), 1) == date(2026, 11, 23)
+
+
+def test_adjust_next_and_offset_return_plain_dates():
+    from datetime import date
+    cal = get_calendar()
+    assert type(cal.adjust_next(date(2027, 1, 1))) is date
+    assert cal.adjust_next(date(2027, 1, 1)) == date(2027, 1, 4)
+    assert type(cal.add_business_days(date(2026, 11, 19), 5)) is date
