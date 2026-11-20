@@ -5,8 +5,12 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_USER="${SUDO_USER:-$(id -un)}"
 UNIT_DST="/etc/systemd/system/liquido.service"
-# Porta local do serviço (só em 127.0.0.1). Troque com: LIQUIDO_PORT=9000 ./deploy/install.sh
+# Porta do serviço (escuta no IP da rede local, veja LIQUIDO_HOST). Troque com: LIQUIDO_PORT=9000 ./deploy/install.sh
 PORT="${LIQUIDO_PORT:-8456}"
+# Endereço da rede local em que o serviço escuta (IP fixo do PC no roteador).
+# Troque com: LIQUIDO_HOST=192.168.0.50 ./deploy/install.sh
+HOST="${LIQUIDO_HOST:-192.168.0.33}"
+[[ "$HOST" =~ ^[0-9.]+$ ]] || erro "LIQUIDO_HOST inválido: $HOST"
 
 erro() { echo "ERRO: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
@@ -26,7 +30,7 @@ command -v systemctl >/dev/null 2>&1 || erro "'systemctl' não encontrado: este 
 [[ "$PORT" =~ ^[0-9]+$ ]] || erro "LIQUIDO_PORT inválida: $PORT"
 
 # A porta precisa estar livre (ou já ser do próprio Liquido, numa reinstalação).
-if ! systemctl is-active --quiet liquido 2>/dev/null && curl -s -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then
+if ! systemctl is-active --quiet liquido 2>/dev/null && curl -s -o /dev/null "http://$HOST:$PORT/" 2>/dev/null; then
   erro "a porta $PORT já está em uso por outro serviço. Escolha outra: LIQUIDO_PORT=9000 $0"
 fi
 
@@ -39,7 +43,7 @@ info "Instalando dependências e gerando o frontend"
 info "Instalando o serviço systemd (pede sudo)"
 TMP_UNIT="$(mktemp)"
 trap 'rm -f "$TMP_UNIT"' EXIT
-sed -e "s|{APP_DIR}|$APP_DIR|g" -e "s|{USER}|$APP_USER|g" -e "s|{PORT}|$PORT|g" "$APP_DIR/deploy/liquido.service" > "$TMP_UNIT"
+sed -e "s|{APP_DIR}|$APP_DIR|g" -e "s|{USER}|$APP_USER|g" -e "s|{PORT}|$PORT|g" -e "s|{HOST}|$HOST|g" "$APP_DIR/deploy/liquido.service" > "$TMP_UNIT"
 sudo install -m 644 "$TMP_UNIT" "$UNIT_DST"
 sudo systemctl daemon-reload
 sudo systemctl enable --now liquido
@@ -48,7 +52,7 @@ sudo systemctl restart liquido
 info "Aguardando o serviço responder"
 ok=0
 for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:$PORT/api/health" 2>/dev/null | grep -q '"status":"ok"'; then ok=1; break; fi
+  if curl -fsS "http://$HOST:$PORT/api/health" 2>/dev/null | grep -q '"status":"ok"'; then ok=1; break; fi
   sleep 1
 done
 [ "$ok" -eq 1 ] || erro "o serviço não respondeu em 30s. Veja: journalctl -u liquido -n 50"
@@ -75,7 +79,7 @@ for host, web in (cfg.get("Web") or {}).items():
 else
   HTTPS_PORT="$PORT"
 fi
-sudo tailscale serve --bg --https="$HTTPS_PORT" "http://127.0.0.1:$PORT"
+sudo tailscale serve --bg --https="$HTTPS_PORT" "http://$HOST:$PORT"
 
 URL=""
 if command -v python3 >/dev/null 2>&1; then
