@@ -10,3 +10,6 @@ __pycache__/
 *.tsbuildinfo
 frontend/test-results/
 frontend/playwright-report/
+
+# prints reais de calibração: ficam só na máquina local
+backend/calibration/prints/
