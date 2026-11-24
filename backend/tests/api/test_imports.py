@@ -55,6 +55,7 @@ def test_upload_mixed_files(client):
     assert body["lote"]["itens"][0]["nome_arquivo"] == "a.png"
     assert body["lote"]["pendentes"] == 1
     assert len(body["recusados"]) == 2
+    assert any("grande.png: maior que 20 MB" == m for m in body["recusados"])
     assert any("b.txt" in m for m in body["recusados"]) and any("grande.png" in m for m in body["recusados"])
     assert app.state.container.import_wake.is_set()
     assert c.get(f"/api/imports/{body['lote']['id']}").json()["id"] == body["lote"]["id"]
@@ -150,3 +151,36 @@ def test_print_served_with_mime(client):
     assert r.headers["cache-control"] == "private, max-age=31536000, immutable"
     assert r.content == PNG
     assert c.get("/api/prints/nao").status_code == 404
+
+
+def test_oversize_not_stored_and_all_oversize_is_422(client):
+    c, app = client
+    big = b"\x89PNG" + b"0" * (21 * 1024 * 1024)
+    r = c.post("/api/imports", files=[("arquivos", ("grande.png", big, "image/png"))])
+    assert r.status_code == 422 and r.json()["detail"] == ["grande.png: maior que 20 MB"]
+    assert not list((app.state.container.imports._prints._dir).glob("*")) if (app.state.container.imports._prints._dir).exists() else True
+
+
+def test_lifespan_worker_processes_and_stops(tmp_path, monkeypatch, fixtures_dir):
+    import time
+
+    monkeypatch.delenv("LIQUIDO_IMPORT_WORKER", raising=False)
+    for v in ("LLM_BASE_URL", "CASA_LLM_MODEL"):
+        monkeypatch.delenv(v, raising=False)
+    monkeypatch.setenv("LIQUIDO_LLM_FIXTURES", str(fixtures_dir))
+    app = create_app(tmp_path / "db.sqlite", fetchers=FixtureFetchers(FIXTURES), today_fn=lambda: TODAY)
+    threads_before = {t for t in __import__("threading").enumerate() if t.name == "import-worker"}
+    with TestClient(app) as c:
+        workers = [t for t in __import__("threading").enumerate() if t.name == "import-worker" and t not in threads_before]
+        assert len(workers) == 1
+        r = c.post("/api/imports", files=[("arquivos", ("a.png", PNG, "image/png"))])
+        lote = r.json()["lote"]["id"]
+        deadline = time.monotonic() + 5
+        status = None
+        while time.monotonic() < deadline:
+            status = c.get(f"/api/imports/{lote}").json()["itens"][0]["status"]
+            if status == "CONCLUIDO":
+                break
+            time.sleep(0.05)
+        assert status == "CONCLUIDO"
+    assert not workers[0].is_alive()

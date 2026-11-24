@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from app.data.imports_repo import ImportBatch, ImportFailure, ImportItem
 from app.deps import Container, get_container
 from app.domain.products.base import ProductData
-from app.imports.service import ImportService, UploadedFile
+from app.imports.service import MAX_BYTES, ImportService, UploadedFile
 
 router = APIRouter()
 
@@ -81,32 +81,35 @@ def status(c: Container = Depends(get_container)) -> ImportStatus:
 @router.post("/imports", status_code=201)
 async def create_import(arquivos: list[UploadFile], c: Container = Depends(get_container)) -> ImportCreated:
     service = _service(c)
-    files = [UploadedFile(f.filename or "sem-nome", await f.read()) for f in arquivos]
+    files: list[UploadedFile] = []
+    recusas: list[str] = []
+    for f in arquivos:
+        nome = f.filename or "sem-nome"
+        if (f.size is not None and f.size > MAX_BYTES) or len(content := await f.read(MAX_BYTES + 1)) > MAX_BYTES:
+            recusas.append(f"{nome}: maior que 20 MB")
+            continue
+        files.append(UploadedFile(nome, content))
     try:
-        batch_id, recusas = service.enqueue(files)
+        batch_id, recusas_servico = service.enqueue(files) if files else (None, [])
+        if batch_id is None:
+            raise ValueError(recusas)
     except ValueError as exc:
-        raise HTTPException(422, exc.args[0] if exc.args else "Nenhum arquivo válido") from exc
+        detail = exc.args[0] if exc.args else []
+        raise HTTPException(422, list(recusas) + [m for m in detail if m not in recusas]) from exc
+    recusas += recusas_servico
     c.import_wake.set()
-    with c.lock:
-        batch = c.imports._repo.get_batch(batch_id)
+    batch = service.get_batch(batch_id)
     return ImportCreated(lote=_batch_view(batch), recusados=recusas)
 
 
 @router.get("/imports")
 def list_imports(c: Container = Depends(get_container)) -> list[ImportBatchView]:
-    with c.lock:
-        return [_batch_view(b) for b in c.imports._repo.list_batches()]
+    return [_batch_view(b) for b in c.imports.list_batches()]
 
 
 @router.get("/imports/failures")
 def list_failures(status: str | None = "ABERTA", c: Container = Depends(get_container)) -> list[ImportFailureView]:
-    with c.lock:
-        repo = c.imports._repo
-        out = []
-        for f in repo.list_failures(status):
-            item = repo.get_item(f.item_id)
-            out.append(_failure_view(f, item.nome_arquivo if item else None))
-        return out
+    return [_failure_view(f, nome) for f, nome in c.imports.list_failures(status)]
 
 
 def _failure_view(f: ImportFailure, nome: str | None) -> ImportFailureView:
@@ -147,14 +150,12 @@ def retry_item(item_id: str, c: Container = Depends(get_container)) -> ImportIte
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     c.import_wake.set()
-    with c.lock:
-        return _item_view(c.imports._repo.get_item(item_id))
+    return _item_view(c.imports.get_item(item_id))
 
 
 @router.get("/imports/{batch_id}")
 def get_import(batch_id: str, c: Container = Depends(get_container)) -> ImportBatchView:
-    with c.lock:
-        batch = c.imports._repo.get_batch(batch_id)
+    batch = c.imports.get_batch(batch_id)
     if batch is None:
         raise HTTPException(404, "Lote não encontrado")
     return _batch_view(batch)
@@ -162,8 +163,7 @@ def get_import(batch_id: str, c: Container = Depends(get_container)) -> ImportBa
 
 @router.get("/prints/{print_id}")
 def get_print(print_id: str, c: Container = Depends(get_container)) -> FileResponse:
-    with c.lock:
-        found = c.imports._prints.path(print_id)
+    found = c.imports.print_file(print_id)
     if found is None or not found[0].is_file():
         raise HTTPException(404, "Print não encontrado")
     path, mime = found

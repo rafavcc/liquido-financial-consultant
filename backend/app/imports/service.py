@@ -227,3 +227,34 @@ class ImportService:
         with self._lock:
             self._open_failure(failure_id)
             self._repo.set_failure_status(failure_id, "DESCARTADA")
+
+    # --- leitura (para a API; cada método segura o lock) ---------------------------------------
+
+    def get_batch(self, batch_id: str):
+        with self._lock:
+            return self._repo.get_batch(batch_id)
+
+    def list_batches(self, limit: int = 20):
+        with self._lock:
+            return self._repo.list_batches(limit)
+
+    def get_item(self, item_id: str):
+        with self._lock:
+            return self._repo.get_item(item_id)
+
+    def list_failures(self, status: str | None = "ABERTA") -> list[tuple]:
+        """Pares (falha, nome do arquivo do item)."""
+        with self._lock:
+            out = []
+            for f in self._repo.list_failures(status):
+                item = self._repo.get_item(f.item_id)
+                out.append((f, item.nome_arquivo if item else None))
+            return out
+
+    def get_failure(self, failure_id: str):
+        with self._lock:
+            return self._repo.get_failure(failure_id)
+
+    def print_file(self, print_id: str):
+        with self._lock:
+            return self._prints.path(print_id)
