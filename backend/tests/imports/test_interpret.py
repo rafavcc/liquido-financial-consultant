@@ -156,3 +156,12 @@ def test_validation_errors_become_failed():
     assert isinstance(r, Failed) and any("prazo mínimo" in e for e in r.erros)
     r = interpret_offer(raw_ok(taxas=[RawRate(texto="300% do CDI")]), "XP", Settings(), T)
     assert any("plausível" in e for e in r.erros)
+
+
+def test_daily_liquidity_on_credit_notes_becomes_at_maturity():
+    """LCI/LCA/LCD não têm liquidez diária (prazo mínimo legal): o modelo às vezes inventa; assume no vencimento."""
+    for tipo in ("LCI", "LCA", "LCD"):
+        r = interpret_offer(raw_ok(tipo=tipo, liquidez="DIARIA", vencimento="23/11/2029"), "BTG", Settings(), T)
+        assert isinstance(r, Created), r
+        assert r.data.liquidez == Liquidity.NO_VENCIMENTO
+        assert "liquidez diária" in r.data.observacoes

@@ -27,6 +27,8 @@ e do Nubank. Responda **somente** com o JSON pedido, sem texto antes ou depois.
 - `aplicacao_minima`: o valor mínimo como aparece ("Aplicação mínima", "Valor mínimo").
 - `liquidez`: NO_VENCIMENTO, DIARIA, DIARIA_APOS_CARENCIA ou DESCONHECIDA. "No Vencimento" e
   "A mercado" (venda no mercado secundário) → NO_VENCIMENTO. Não visível → DESCONHECIDA.
+  Só informe a liquidez se ela estiver escrita na tela; nunca deduza. LCI, LCA e LCD nunca têm
+  liquidez diária.
 - `carencia`: prazo de carência como aparece, se houver.
 - `disponivel_ate`: se a tela disser até quando a oferta está disponível.
 - `codigo`: código do papel, se aparecer (ex.: "CRA0240066D", "22L2288690").

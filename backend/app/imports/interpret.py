@@ -45,6 +45,9 @@ class Failed:
     parcial: dict
 
 
+_NO_DAILY = {ProductType.LCI, ProductType.LCA, ProductType.LCD}
+
+
 def _liquidity(texto: str | None) -> tuple[Liquidity, str | None]:
     t = re.sub(r"[\s_]+", " ", plain(texto))
     if t == "diaria":
@@ -115,6 +118,9 @@ def interpret_offer(
     liquidez, nota_liq = _liquidity(raw.liquidez)
     if nota_liq:
         notas.append(nota_liq)
+    if liquidez == Liquidity.DIARIA and tipo in _NO_DAILY:
+        liquidez = Liquidity.NO_VENCIMENTO
+        notas.append(f"Importado: {tipo.value} não tem liquidez diária, assumi no vencimento")
 
     carencia = None
     if (raw.carencia or "").strip():
