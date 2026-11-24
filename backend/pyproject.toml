@@ -10,6 +10,7 @@ dependencies = [
     "httpx",
     "bizdays==2.0.0",
     "pandas>=3.1.1",
+    "python-multipart>=0.0.34",
 ]
 
 [dependency-groups]

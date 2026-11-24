@@ -1,4 +1,6 @@
-from collections.abc import Callable
+import os
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
@@ -8,9 +10,10 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from app.api import format_errors, market, products, settings, simulate
+from app.api import format_errors, imports, market, products, settings, simulate
 from app.data.market import MarketFetchers
 from app.deps import build_container
+from app.imports.worker import ImportWorker
 
 
 def create_app(
@@ -19,8 +22,23 @@ def create_app(
     static_dir: Path | None = None,
     today_fn: Callable[[], date] = date.today,
 ) -> FastAPI:
-    app = FastAPI(title="Liquido")
-    app.state.container = build_container(db_path, fetchers, static_dir, today_fn)
+    container = build_container(db_path, fetchers, static_dir, today_fn)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        worker = None
+        if container.imports is not None and os.environ.get("LIQUIDO_IMPORT_WORKER") != "0":
+            worker = ImportWorker(container.imports, container.import_wake)
+            worker.start()
+            container.import_wake.set()  # drena o que ficou na fila
+        try:
+            yield
+        finally:
+            if worker is not None:
+                worker.stop()
+
+    app = FastAPI(title="Liquido", lifespan=lifespan)
+    app.state.container = container
 
     @app.exception_handler(RequestValidationError)
     async def _validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -30,7 +48,7 @@ def create_app(
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    for module in (simulate, products, settings, market):
+    for module in (simulate, products, settings, market, imports):
         app.include_router(module.router, prefix="/api")
 
     static_root = app.state.container.static_dir

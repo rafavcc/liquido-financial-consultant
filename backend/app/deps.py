@@ -15,6 +15,9 @@ from app.domain.calendar import get_calendar
 from app.domain.indexes import IndexPath
 from app.domain.products.base import ProductData, SimContext
 from app.domain.settings import Settings
+from app.data.imports_repo import ImportRepository, PrintStore
+from app.imports.llm import FakeLlmClient, LlmClient, LlmConfig, OpenAICompatClient
+from app.imports.service import ImportService
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 SEED_FILE = Path(__file__).parent / "seed" / "products_example.json"
@@ -31,6 +34,10 @@ class Container:
     lock: threading.RLock = field(default_factory=threading.RLock)
     # single-flight da busca de rede; nunca é segurado junto com `lock` durante I/O de rede
     snapshot_lock: threading.Lock = field(default_factory=threading.Lock)
+    imports: ImportService | None = None
+    import_wake: threading.Event = field(default_factory=threading.Event)
+    llm: LlmClient | None = None
+    llm_model: str | None = None
 
     def snapshot(self, force: bool = False) -> tuple[Settings, MarketSnapshot]:
         with self.snapshot_lock:
@@ -108,7 +115,24 @@ def build_container(
     lock = threading.RLock()
     cache = LockedMarketCache(MarketCacheRepository(conn), lock)
     market = MarketService(cache, fetchers, lambda: datetime.now(UTC))
-    return Container(products, settings, market, today_fn, static_dir, lock=lock)
+    llm: LlmClient | None = None
+    llm_model: str | None = None
+    llm_fixtures = os.environ.get("LIQUIDO_LLM_FIXTURES")
+    if llm_fixtures:
+        llm, llm_model = FakeLlmClient(Path(llm_fixtures)), "fixtures"
+    elif (cfg := LlmConfig.from_env()) is not None:
+        import httpx
+
+        llm, llm_model = OpenAICompatClient(cfg, httpx.Client()), cfg.model
+    service = ImportService(
+        products, settings, ImportRepository(conn), PrintStore(db_path.parent / "prints", conn),
+        llm, lock, today_fn, lambda: datetime.now(UTC),
+    )
+    service.requeue_reading()
+    return Container(
+        products, settings, market, today_fn, static_dir, lock=lock,
+        imports=service, llm=llm, llm_model=llm_model,
+    )
 
 
 def get_container(request: Request) -> Container:
