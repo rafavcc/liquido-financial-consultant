@@ -5,6 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 from app.data.market import MarketSnapshot
+from app.domain.horizon import horizonte_natural, prazo_saida_dias
 from app.domain.products.base import AlertCode, Product, Section, SimContext, SimulationResult
 
 log = logging.getLogger(__name__)
@@ -46,10 +47,16 @@ def _safe_simulate(product: Product, valor: Decimal, data_alvo: date, ctx: SimCo
         return Product._unavailable(product, valor, AlertCode.ERRO_CALCULO, "Erro ao calcular este produto", ctx)
 
 
+def _com_prazo(result: SimulationResult, ctx: SimContext) -> SimulationResult:
+    if result.secao != Section.INDISPONIVEL:
+        result.prazo_saida_dias = prazo_saida_dias(result.product, ctx.today, ctx.cal)
+    return result
+
+
 def simulate_all(
     products: list[Product], valor: Decimal, data_alvo: date, ctx: SimContext
 ) -> tuple[list[SimulationResult], list[SimulationResult], list[SimulationResult]]:
-    results = [_safe_simulate(p, valor, data_alvo, ctx) for p in products]
+    results = [_com_prazo(_safe_simulate(p, valor, data_alvo, ctx), ctx) for p in products]
     ate = [r for r in results if r.secao == Section.VENCE_ATE_DATA]
     depois = [r for r in results if r.secao == Section.VENCE_DEPOIS]
     indisp = [r for r in results if r.secao == Section.INDISPONIVEL]
@@ -63,6 +70,24 @@ def simulate_all(
     )
     indisp.sort(key=lambda r: r.product.nome)
     return ate, resgataveis + nao_resgataveis, indisp
+
+
+def simulate_sem_data(
+    products: list[Product], valor: Decimal, ctx: SimContext
+) -> tuple[list[SimulationResult], list[SimulationResult], list[SimulationResult]]:
+    """Simula cada produto até o seu horizonte natural; ordena por taxa líquida a.a."""
+    results = [
+        _com_prazo(_safe_simulate(p, valor, horizonte_natural(p.data, ctx.today, ctx.cal), ctx), ctx)
+        for p in products
+    ]
+    ate = [r for r in results if r.secao in (Section.VENCE_ATE_DATA, Section.VENCE_DEPOIS) and r.resgatavel]
+    depois = [r for r in results if r.secao in (Section.VENCE_ATE_DATA, Section.VENCE_DEPOIS) and not r.resgatavel]
+    indisp = [r for r in results if r.secao == Section.INDISPONIVEL]
+
+    ate.sort(key=lambda r: (r.taxa_liquida_aa is None, -(r.taxa_liquida_aa or _ZERO), r.product.nome))
+    depois.sort(key=lambda r: r.product.data_vencimento or date.max)
+    indisp.sort(key=lambda r: r.product.nome)
+    return ate, depois, indisp
 
 
 def build_market_summary(snapshot: MarketSnapshot, ctx: SimContext) -> MarketSummary:

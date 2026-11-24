@@ -153,6 +153,7 @@ class SimulationResult(BaseModel):
     resgatavel: bool
     estimativa_mercado: bool = False
     data_saida: date | None = None
+    prazo_saida_dias: int | None = None
     dias_parado: int = 0
     valor_investido: Decimal = _ZERO
     sobra: Decimal = _ZERO  # dinheiro não aplicado (fica parado, sem rendimento nem imposto)
