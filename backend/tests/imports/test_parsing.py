@@ -103,3 +103,9 @@ def test_parse_rate_other_indexes_are_never_pre():
         assert parse_rate(t) is None, t
     assert parse_rate("CDI 105%") == (I.PCT_CDI, D("1.05"))
     assert parse_rate("12% a.a.") == (I.PRE, D("0.12"))
+
+
+def test_parse_money_mil_with_decimals_is_not_read_as_cents():
+    assert parse_money("R$ 1,25 milhão") == D("1250000")
+    assert parse_money("R$ 1,50 mil") == D("1500")
+    assert parse_money("R$ 1.000,00") == D("1000.00")

@@ -73,11 +73,12 @@ def parse_date(texto: str) -> date | None:
 
 
 def parse_money(texto: str) -> Decimal | None:
-    if m := _MONEY.search(texto):
-        return Decimal(m.group(1).replace(".", "") + "." + m.group(2))
+    # "mil"/"milhão" primeiro: "R$ 1,25 milhão" não pode virar R$ 1,25
     if m := _MONEY_MIL.search(plain(texto)):
         base = Decimal(m.group(1).replace(".", "") + "." + (m.group(2) or "0"))
         return base * (1000 if m.group(3) == "mil" else 1_000_000)
+    if m := _MONEY.search(texto):
+        return Decimal(m.group(1).replace(".", "") + "." + m.group(2))
     if m := _MONEY_BRL.search(texto):
         return Decimal(m.group(1).replace(".", "") + "." + (m.group(2) or "0"))
     return None
