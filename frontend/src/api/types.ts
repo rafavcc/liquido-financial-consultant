@@ -141,6 +141,7 @@ export interface ImportStatus {
   configurado: boolean;
   alcancavel: boolean | null;
   modelo: string | null;
+  aviso?: string | null;
 }
 
 export type ImportItemStatus = "NA_FILA" | "LENDO" | "CONCLUIDO" | "ERRO";

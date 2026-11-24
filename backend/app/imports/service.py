@@ -25,6 +25,11 @@ MAX_ATTEMPTS = 3
 _FORMATO = "{nome}: formato não suportado (use PNG, JPEG ou WEBP)"
 
 
+MULTI_MODEL_AVISO = (
+    "Unsloth está com vários modelos simultâneos (multi-model) ligado: desligue para importar"
+)
+
+
 @dataclass
 class UploadedFile:
     nome: str
@@ -133,6 +138,8 @@ class ImportService:
         if found is None:
             return self._fail(item, "Print não encontrado")
         path, mime = found
+        if self._llm.multi_model_enabled() is True:
+            return self._fail(item, MULTI_MODEL_AVISO)
         try:
             extraction = self._llm.extract(path.read_bytes(), mime)  # fora do lock
         except LlmUnavailable as exc:

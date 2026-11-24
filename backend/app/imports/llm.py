@@ -41,6 +41,8 @@ class LlmClient(Protocol):
 
     def ping(self) -> bool: ...
 
+    def multi_model_enabled(self) -> bool | None: ...
+
 
 @dataclass
 class LlmConfig:
@@ -154,6 +156,20 @@ class OpenAICompatClient:
             return False
 
 
+    def multi_model_enabled(self) -> bool | None:
+        """Só leitura do Unsloth Studio; None se o servidor não for Studio ou não responder."""
+        root = self._cfg.base_url.removesuffix("/v1")
+        try:
+            resp = self._http.get(f"{root}/api/settings/multi-model", headers=self._headers(), timeout=3)
+            if not resp.is_success:
+                return None
+            data = resp.json()
+            enabled, mode = data["enabled"], data["mode"]
+        except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            return None
+        return bool(enabled) or mode != "off"
+
+
 class FakeLlmClient:
     """Para e2e/testes: devolve `<sha256>.json` ou `default.json` do diretório."""
 
@@ -168,3 +184,6 @@ class FakeLlmClient:
 
     def ping(self) -> bool:
         return True
+
+    def multi_model_enabled(self) -> bool | None:
+        return False

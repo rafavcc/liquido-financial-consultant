@@ -77,11 +77,18 @@ def test_upload_503_when_not_configured(client_sem_llm):
 
 def test_status_endpoint(client, client_sem_llm):
     assert client[0].get("/api/imports/status").json() == {
-        "configurado": True, "alcancavel": True, "modelo": "fixtures",
+        "configurado": True, "alcancavel": True, "modelo": "fixtures", "aviso": None,
     }
     assert client_sem_llm.get("/api/imports/status").json() == {
-        "configurado": False, "alcancavel": None, "modelo": None,
+        "configurado": False, "alcancavel": None, "modelo": None, "aviso": None,
     }
+
+
+def test_status_aviso_when_multi_model_on(client, monkeypatch):
+    test_client, app = client
+    monkeypatch.setattr(app.state.container.llm, "multi_model_enabled", lambda: True)
+    aviso = test_client.get("/api/imports/status").json()["aviso"]
+    assert aviso == "Unsloth está com vários modelos simultâneos (multi-model) ligado: desligue para importar"
 
 
 def process_all(app):

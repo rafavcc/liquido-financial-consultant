@@ -27,6 +27,10 @@ class StubLlm:
     def __init__(self):
         self.calls = 0
         self.error: Exception | None = None
+        self.multi_model: bool | None = False
+
+    def multi_model_enabled(self):
+        return self.multi_model
 
     def extract(self, image, mime):
         self.calls += 1
@@ -454,3 +458,16 @@ def test_reupload_of_same_print_fills_unknown_minimum(env):
     known = interpret_offer(offer("R$ 1.000,00"), "XP", settings, today)
     env.svc.upsert_offer(known.data.model_copy(update={"print_id": pid}), {pid}, known.minimo_desconhecido)
     assert env.products.list()[0].valor_minimo == 1000
+
+
+def test_multi_model_on_refuses_without_calling_extract(env):
+    env.llm.multi_model = True
+    batch, _ = env.svc.enqueue([shot("btg-app-lci-eq-cdb")])
+    env.svc.process_next()
+    it = env.items(batch)[0]
+    assert it.status == "ERRO" and env.llm.calls == 0
+    assert it.erro == "Unsloth está com vários modelos simultâneos (multi-model) ligado: desligue para importar"
+    env.llm.multi_model = None  # servidor sem Studio: segue normalmente
+    env.svc.retry_item(it.id)
+    env.svc.process_next()
+    assert env.items(batch)[0].status == "CONCLUIDO" and env.llm.calls == 1

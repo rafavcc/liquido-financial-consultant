@@ -196,6 +196,11 @@ export function Importar() {
           <p className="mt-0.5 text-muted">Defina LLM_BASE_URL e CASA_LLM_MODEL no servidor para ler prints.</p>
         </div>
       )}
+      {status.data?.aviso && (
+        <div role="alert" className="rounded-xl border border-line bg-subtle px-4 py-3 text-sm text-warn">
+          {status.data.aviso}
+        </div>
+      )}
       {status.data?.configurado && status.data.alcancavel === false && (
         <div role="alert" className="rounded-xl border border-line bg-subtle px-4 py-3 text-sm text-warn">
           Servidor LLM indisponível no momento. Os prints entram na fila e são lidos quando ele voltar.

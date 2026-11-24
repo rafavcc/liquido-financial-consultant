@@ -45,6 +45,12 @@ test("não configurado mostra aviso e desabilita o seletor", async () => {
   expect(screen.getByLabelText("Escolher prints")).toBeDisabled();
 });
 
+test("mostra o aviso do status quando presente", async () => {
+  imports.status.mockResolvedValue({ configurado: true, alcancavel: true, modelo: "qwen", aviso: "Unsloth multi-model ligado" });
+  setup();
+  expect(await screen.findByText("Unsloth multi-model ligado")).toBeInTheDocument();
+});
+
 test("envia os 3 arquivos escolhidos e mostra as recusas por nome", async () => {
   imports.upload.mockResolvedValue({ lote: lote([item({})]), recusados: ["doc.pdf: formato não suportado"] });
   setup();

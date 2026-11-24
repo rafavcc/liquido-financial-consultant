@@ -131,3 +131,40 @@ def test_auth_and_not_found_are_distinct_non_retryable_errors():
         with pytest.raises(LlmRejected, match=msg.replace("(", r"\(").replace(")", r"\)")):
             client.extract(PNG, "image/png")
         assert len(bodies) == 1
+
+
+def _studio(handler):
+    seen: list[httpx.Request] = []
+
+    def wrapped(request):
+        seen.append(request)
+        return handler(request)
+
+    cfg = LlmConfig("http://llm/v1", "m", "test-key", 5.0)
+    return OpenAICompatClient(cfg, httpx.Client(transport=httpx.MockTransport(wrapped))), seen
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        ({"enabled": True, "mode": "on"}, True),
+        ({"enabled": False, "mode": "on"}, True),
+        ({"enabled": True, "mode": "off"}, True),
+        ({"enabled": False, "mode": "off"}, False),
+    ],
+)
+def test_multi_model_enabled_reads_studio_setting(payload, expected):
+    client, seen = _studio(lambda r: httpx.Response(200, json=payload))
+    assert client.multi_model_enabled() is expected
+    assert seen[0].method == "GET" and str(seen[0].url) == "http://llm/api/settings/multi-model"
+    assert seen[0].headers["Authorization"] == "Bearer test-key"
+
+
+def test_multi_model_enabled_unknown_when_absent_or_unreadable():
+    assert _studio(lambda r: httpx.Response(404))[0].multi_model_enabled() is None
+    assert _studio(lambda r: httpx.Response(200, text="<html>"))[0].multi_model_enabled() is None
+
+    def boom(r):
+        raise httpx.ConnectError("x")
+
+    assert _studio(boom)[0].multi_model_enabled() is None

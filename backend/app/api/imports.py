@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from app.data.imports_repo import ImportBatch, ImportFailure, ImportItem
 from app.deps import Container, get_container
 from app.domain.products.base import ProductData
-from app.imports.service import MAX_BYTES, ImportService, UploadedFile
+from app.imports.service import MAX_BYTES, MULTI_MODEL_AVISO, ImportService, UploadedFile
 
 router = APIRouter()
 
@@ -50,6 +50,7 @@ class ImportStatus(BaseModel):
     configurado: bool
     alcancavel: bool | None
     modelo: str | None
+    aviso: str | None = None
 
 
 def _item_view(i: ImportItem) -> ImportItemView:
@@ -75,7 +76,8 @@ def _service(c: Container) -> ImportService:
 def status(c: Container = Depends(get_container)) -> ImportStatus:
     if c.llm is None:
         return ImportStatus(configurado=False, alcancavel=None, modelo=None)
-    return ImportStatus(configurado=True, alcancavel=c.llm.ping(), modelo=c.llm_model)
+    aviso = MULTI_MODEL_AVISO if c.llm.multi_model_enabled() is True else None
+    return ImportStatus(configurado=True, alcancavel=c.llm.ping(), modelo=c.llm_model, aviso=aviso)
 
 
 @router.post("/imports", status_code=201)
