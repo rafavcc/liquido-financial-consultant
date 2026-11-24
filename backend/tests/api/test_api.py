@@ -5,12 +5,13 @@ from decimal import Decimal as D
 from fastapi.testclient import TestClient
 
 from app.data import db
+from app.data.market import FixtureFetchers
 from app.data.repositories import ProductRepository
 from app.domain.products.base import ProductData
 from app.domain.products.validation import validate_product
 from app.domain.settings import Settings
 from app.main import create_app
-from tests.api.conftest import TODAY
+from tests.api.conftest import FIXTURES, TODAY
 
 BODY = {"valor": "50000", "data_alvo": "2029-06-15"}
 
@@ -26,7 +27,18 @@ class AlwaysFailFetchers:
         raise RuntimeError("sem rede")
 
 
-def test_api_simulate_offline(client_fixtures):
+class PinnedFixtureFetchers(FixtureFetchers):
+    """MarketService usa o relógio real; fixa o 'hoje' do BCB para o teste não depender da data."""
+
+    def fetch_bcb(self, today):
+        return super().fetch_bcb(TODAY)
+
+
+def test_api_simulate_offline(tmp_path):
+    app = create_app(
+        tmp_path / "db.sqlite", fetchers=PinnedFixtureFetchers(FIXTURES), today_fn=lambda: TODAY
+    )
+    client_fixtures = TestClient(app)
     r = client_fixtures.post("/api/simulate", json=BODY)
     body = r.json()
     assert r.status_code == 200

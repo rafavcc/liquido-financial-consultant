@@ -3,7 +3,7 @@ from decimal import Decimal as D
 
 import pytest
 
-from app.domain.products.base import Coverage, Indexer, Liquidity, ProductType
+from app.domain.products.base import Coverage, Indexer, Liquidity, ProductType, Section
 from app.domain.products.factory import build_product
 from app.domain.products.validation import validate_product
 from app.domain.settings import Settings
@@ -61,10 +61,14 @@ def test_lcd_rules():
 
 
 def test_lcd_simulates_tax_free():
-    r = build_product(make(
-        tipo=ProductType.LCD, indexador=Indexer.PCT_CDI, taxa=D("0.90"),
-        data_vencimento=date(2030, 3, 15))).simulate(D("10000"), date(2031, 1, 1), ctx)
+    kw = dict(indexador=Indexer.PCT_CDI, taxa=D("0.90"), data_vencimento=date(2028, 3, 15))
+    alvo = date(2028, 6, 1)
+    r = build_product(make(tipo=ProductType.LCD, **kw)).simulate(D("10000"), alvo, ctx)
+    assert r.secao == Section.VENCE_ATE_DATA
+    assert r.valor_bruto > D("10000")
     assert r.ir == 0 and r.iof == 0
+    cdb = build_product(make(tipo=ProductType.CDB, **kw)).simulate(D("10000"), alvo, ctx)
+    assert cdb.ir > 0
 
 
 def test_old_settings_keys_ignored():
