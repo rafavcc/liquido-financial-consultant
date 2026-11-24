@@ -206,3 +206,10 @@ def test_resolve_platform_uses_clues_when_model_is_unsure():
 
 def test_schema_asks_for_clues_before_platform():
     assert list(RawExtraction.model_fields)[:2] == ["indicios", "plataforma"]
+
+
+def test_dash_grace_period_means_none():
+    for vazio in ("-", "—", "Não há", "N/A"):
+        r = interpret_offer(raw_ok(carencia=vazio), "BTG", Settings(), T)
+        assert isinstance(r, Created), (vazio, r)
+        assert r.data.data_carencia is None

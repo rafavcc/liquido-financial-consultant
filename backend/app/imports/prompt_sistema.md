@@ -14,9 +14,10 @@ e do Nubank. Responda **somente** com o JSON pedido, sem texto antes ou depois.
 - `tipo`: CDB, LCI, LCA, LCD, CRI, CRA, FUNDO_RF (fundo de renda fixa), TESOURO (Tesouro Direto) ou
   OUTRO (LF, CDCA, CPR, debênture, fundo multimercado e qualquer outra coisa). O tipo costuma ser o
   começo do nome ("LCI CEF - NOV/2028", "CRA - ARMAC", "LCI - Pós-fixado").
-- `emissor`: o banco ou empresa que emite, como aparece (no Nubank, a linha "Emissor"). Em tabelas
-  da XP e do BTG o emissor está no próprio nome: "LCA ORIGINAL - ABR/2030" → "ORIGINAL",
-  "CRA - ARMAC" → "ARMAC".
+- `emissor`: o banco ou empresa que emite, **completo, como aparece** ("Banco BTG Pactual",
+  "Banco Original", "Cloudwalk Infinitepay" — no Nubank, a linha "Emissor"; no app do BTG, a linha
+  abaixo do título). Só quando não houver linha de emissor (tabelas da XP e do BTG), tire do nome:
+  "LCA BANCO ORIGINAL - ABR/2030" → "BANCO ORIGINAL", "CRA - ARMAC" → "ARMAC".
 - `nome_exibido`: o título da oferta como aparece, se houver.
 - `taxas`: **somente valores de rentabilidade** — percentuais de retorno. Para cada um:
   `rotulo` = o texto que o identifica (em tabelas, o **cabeçalho da coluna**, ex.: "Taxa",

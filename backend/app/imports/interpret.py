@@ -38,7 +38,7 @@ _NOME_EMISSOR = re.compile(
     re.IGNORECASE,
 )
 _NOME_GENERICO = {"pos-fixado", "pos fixado", "prefixado", "pre-fixado", "ipca", "inflacao", "hibrido"}
-_TRIVIAL = {"", "-", "no vencimento", "nao ha", "n/a"}
+_TRIVIAL = {"", "-", "—", "–", "no vencimento", "nao ha", "n/a"}
 
 
 @dataclass
@@ -154,7 +154,7 @@ def interpret_offer(
         notas.append(f"Importado: {tipo.value} não tem liquidez diária, assumi no vencimento")
 
     carencia = None
-    if (raw.carencia or "").strip():
+    if plain(raw.carencia) not in _TRIVIAL:
         try:
             carencia = parse_carencia(raw.carencia, today)
         except ValueError:
