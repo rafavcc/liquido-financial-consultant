@@ -61,7 +61,7 @@ export function Comparador() {
 
   const sim = useQuery({
     queryKey: ["simulate", valorNum, dData],
-    queryFn: ({ signal }) => api.simulate(valorNum as string, dData, signal),
+    queryFn: ({ signal }) => api.simulate(valorNum as string, "DATA", dData, signal),
     enabled: valido,
     placeholderData: keepPreviousData,
     retry: false,

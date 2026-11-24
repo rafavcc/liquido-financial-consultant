@@ -11,12 +11,14 @@ export const fixtureResult: SimulationResult = {
   secao: "VENCE_ATE_DATA", resgatavel: true, estimativa_mercado: false, data_saida: "2028-11-16",
   dias_parado: 0, valor_investido: "50000", sobra: "0", valor_bruto: "74000.5", iof: "0.00", ir: "3000",
   custodia: "0", come_cotas: "0", taxa_adm: "0", valor_liquido: "71840.1", rentab_liquida: "0.4368",
-  taxa_liquida_aa: "0.1180", data_solicitacao_resgate: null,
+  taxa_liquida_aa: "0.1180", prazo_saida_dias: 730, data_solicitacao_resgate: null,
   alertas: [{ code: "PROJECAO", message: "Depende de projeção de CDI (Focus 13/11/2026)" }],
   serie: [],
 };
 
 export const fixtureResponse: SimulationResponse = {
+  horizonte: "DATA",
+  data_alvo: "2029-06-15",
   vence_ate_data: [fixtureResult],
   vence_depois: [],
   indisponiveis: [],

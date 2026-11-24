@@ -1,5 +1,6 @@
-import type { AlertCode, Indexer, ProductData, ProductType } from "../api/types";
-import { formatPct } from "./format";
+import type { AlertCode, Horizonte, Indexer, ProductData, ProductType, SimulationResult } from "../api/types";
+import { formatDate, formatPct } from "./format";
+import type { Ordenacao } from "./ordering";
 
 export function indexLabel(indexador: Indexer, taxa: string): string {
   switch (indexador) {
@@ -73,3 +74,36 @@ export const ALERT_META: Record<AlertCode, { icon: string; text: string; tone: A
   IMPORTADO_IA: { icon: "🤖", text: "Importado por IA", tone: "off" },
   ERRO_CALCULO: { icon: "⚠️", text: "Erro de cálculo", tone: "neg" },
 };
+
+export const ORDENACOES: { id: Ordenacao; label: string }[] = [
+  { id: "VALOR_LIQUIDO", label: "Valor líquido" },
+  { id: "TAXA", label: "Taxa líquida a.a." },
+  { id: "CUSTO_BENEFICIO", label: "Custo-benefício" },
+  { id: "PRAZO", label: "Menor prazo de saída" },
+  { id: "SEGURANCA", label: "Segurança" },
+];
+
+export const HORIZONTES: { id: Horizonte; label: string }[] = [
+  { id: "SEM_DATA", label: "Sem data" },
+  { id: "UM_ANO", label: "1 ano" },
+  { id: "DOIS_ANOS", label: "2 anos" },
+  { id: "DATA", label: "Escolher data" },
+];
+
+/** Quando o dinheiro fica disponível. `hoje` em ISO (yyyy-mm-dd). */
+export function prazoSaidaLabel(r: SimulationResult, hoje: string): string | null {
+  if (r.prazo_saida_dias === null) return null;
+  const p = r.product;
+  const diaria = "Liquidez diária";
+  if (p.tipo === "FUNDO_RF") {
+    const n = p.prazo_resgate_dias ?? 0;
+    return n === 0 ? diaria : `D+${n}`;
+  }
+  if (p.tipo === "TESOURO_SELIC") return diaria;
+  if (p.tipo.startsWith("TESOURO_")) return `Venda antes de ${formatDate(p.data_vencimento)} a preço de mercado`;
+  if (p.liquidez === "DIARIA") return diaria;
+  if (p.liquidez === "DIARIA_APOS_CARENCIA") {
+    return p.data_carencia !== null && p.data_carencia > hoje ? `Carência até ${formatDate(p.data_carencia)}` : diaria;
+  }
+  return `Preso até ${formatDate(p.data_vencimento)}`;
+}

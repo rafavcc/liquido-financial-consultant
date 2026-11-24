@@ -9,6 +9,7 @@ export type ProductType =
 export type Indexer = "PRE" | "PCT_CDI" | "CDI_MAIS" | "IPCA_MAIS" | "SELIC";
 export type Liquidity = "NO_VENCIMENTO" | "DIARIA" | "DIARIA_APOS_CARENCIA";
 export type Coverage = "FGC" | "TESOURO" | "NENHUMA";
+export type Horizonte = "SEM_DATA" | "UM_ANO" | "DOIS_ANOS" | "DATA";
 export type Section = "VENCE_ATE_DATA" | "VENCE_DEPOIS" | "INDISPONIVEL";
 export type AlertCode =
   | "PROJECAO" | "FGC_LIMITE" | "SEM_FGC" | "ESTIMATIVA_MERCADO" | "FUNDO_SEM_GARANTIA"
@@ -75,6 +76,7 @@ export interface SimulationResult {
   valor_liquido: Decimal | null;
   rentab_liquida: Decimal | null;
   taxa_liquida_aa: Decimal | null;
+  prazo_saida_dias: number | null;
   data_solicitacao_resgate: string | null;
   alertas: Alert[];
   serie: SeriePoint[];
@@ -100,6 +102,8 @@ export interface MarketSummary {
 }
 
 export interface SimulationResponse {
+  horizonte: Horizonte;
+  data_alvo: string | null;
   vence_ate_data: SimulationResult[];
   vence_depois: SimulationResult[];
   indisponiveis: SimulationResult[];

@@ -1,4 +1,4 @@
-import type { ImportBatchView, ImportCreated, ImportFailureView, ImportItemView, ImportStatus, MarketSummary, ProductData, ProductView, Settings, SimulationResponse } from "./types";
+import type { Horizonte, ImportBatchView, ImportCreated, ImportFailureView, ImportItemView, ImportStatus, MarketSummary, ProductData, ProductView, Settings, SimulationResponse } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, public messages: string[]) {
@@ -45,8 +45,13 @@ async function request<T>(
 export const printUrl = (id: string) => `/api/prints/${id}`;
 
 export const api = {
-  simulate: (valor: string, dataAlvo: string, signal?: AbortSignal) =>
-    request<SimulationResponse>("POST", "/simulate", { valor, data_alvo: dataAlvo }, signal),
+  simulate: (valor: string, horizonte: Horizonte, dataAlvo: string | null, signal?: AbortSignal) =>
+    request<SimulationResponse>(
+      "POST",
+      "/simulate",
+      horizonte === "DATA" ? { valor, horizonte, data_alvo: dataAlvo } : { valor, horizonte },
+      signal,
+    ),
   market: () => request<MarketSummary>("GET", "/market"),
   refreshMarket: () => request<MarketSummary>("POST", "/market/refresh"),
   products: {
