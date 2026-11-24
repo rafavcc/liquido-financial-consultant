@@ -38,3 +38,17 @@ test("rota do app e API inexistente", async ({ page, request }) => {
   const r = await request.get("/api/nao-existe");
   expect(r.status()).toBe(404);
 });
+
+test("sem data e custo-benefício", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Quanto você quer investir?").fill("50.000,00");
+  await page.getByRole("radio", { name: "Sem data" }).click();
+  await expect(page.getByLabel("Preciso do dinheiro em")).toHaveCount(0);
+  const secao = page.locator("section").filter({ has: page.getByRole("heading", { name: /Todos os produtos/ }) });
+  await expect(secao.locator("article").first()).toBeVisible();
+  await expect(secao.locator("article").first().getByText(/a\.a\./).first()).toBeVisible();
+  await page.getByLabel("Ordenar por").selectOption("CUSTO_BENEFICIO");
+  await expect(secao.locator("article").first()).toBeVisible();
+  await page.getByRole("radio", { name: "2 anos" }).click();
+  await expect(page.getByText(/Resgate em \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
+});
