@@ -15,6 +15,7 @@ from app.domain.offers import offer_key
 from app.domain.products.base import ProductData
 from app.domain.products.validation import validate_product
 from app.imports.interpret import Created, Failed, Ignored, interpret_offer, resolve_platform
+from app.imports.parsing import parse_amortizacao, parse_periodicidade
 from app.imports.llm import LlmBadResponse, LlmClient, LlmUnavailable
 
 log = logging.getLogger(__name__)
@@ -220,9 +221,13 @@ class ImportService:
             erros = validate_product(data, self._settings.get(), today)
             if erros:
                 raise ValueError(erros)
-            data = data.model_copy(
-                update={"origem": "IA", "print_id": failure.print_id, "data_registro": today}
-            )
+            update: dict = {"origem": "IA", "print_id": failure.print_id, "data_registro": today}
+            raw = failure.parcial.get("raw") or {}
+            if data.juros_periodicos is None and (j := parse_periodicidade(raw.get("juros"))):
+                update["juros_periodicos"] = j
+            if data.amortizacao is None and (a := parse_amortizacao(raw.get("amortizacao"))):
+                update["amortizacao"] = a
+            data = data.model_copy(update=update)
             item = self._repo.get_item(failure.item_id)
             batch = self._repo.get_batch(item.batch_id) if item else None
             batch_prints = {i.print_id for i in batch.itens} if batch else set()

@@ -379,3 +379,21 @@ def test_unknown_minimum_never_lowers_existing_minimum(env):
     lower = interpret_offer(offer("R$ 500"), "XP", settings, today)
     env.svc.upsert_offer(lower.data.model_copy(update={"print_id": pid}), {pid}, lower.minimo_desconhecido)
     assert env.products.list()[0].valor_minimo == 500
+
+
+def test_resolve_failure_refills_juros_and_amortizacao_from_raw(env):
+    from app.imports.interpret import Created, interpret_offer
+
+    ext = fixture("btg-web-cri-cra-ipca")
+    cra = ext.ofertas[1]
+    batch, _ = env.svc.enqueue([shot("btg-web-cri-cra-ipca")])
+    item = env.items(batch)[0]
+    env.repo.add_failure(item.id, {"raw": cra.model_dump(mode="json"), "interpretado": {}}, ["x"])
+    (fail,) = env.repo.list_failures("ABERTA")
+    res = interpret_offer(cra, "BTG", SettingsRepository(env.conn).get(), env.clock.now.date())
+    assert isinstance(res, Created)
+    body = res.data.model_copy(update={"juros_periodicos": None, "amortizacao": None})
+    out = env.svc.resolve_failure(fail.id, body)
+    assert out.juros_periodicos == "MENSAL" and out.amortizacao.inicio == date(2031, 6, 16)
+    (p,) = env.products.list()
+    assert p.juros_periodicos == "MENSAL" and p.amortizacao is not None
