@@ -1,0 +1,60 @@
+{
+  "plataforma": "XP",
+  "ofertas": [
+    {
+      "tipo": "CDB",
+      "emissor": "BANCO XP S.A.",
+      "nome_exibido": "CDB BANCO XP S.A. - NOV/2028",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade",
+          "texto": "102,5% CDI"
+        }
+      ],
+      "vencimento": "18/11/2028",
+      "aplicacao_minima": "R$ 1.000,00",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": false
+    },
+    {
+      "tipo": "CDB",
+      "emissor": "PICPAY",
+      "nome_exibido": "CDB PICPAY - NOV/2027",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade",
+          "texto": "101,75% CDI"
+        }
+      ],
+      "vencimento": "19/11/2027",
+      "aplicacao_minima": "R$ 1.000,00",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": false
+    },
+    {
+      "tipo": "CDB",
+      "emissor": "PORTOSEG S/A CREDITO FINA",
+      "nome_exibido": "CDB PORTOSEG S/A CREDITO FINA - FEV/...",
+      "taxas": [],
+      "vencimento": null,
+      "aplicacao_minima": null,
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": true
+    }
+  ]
+}

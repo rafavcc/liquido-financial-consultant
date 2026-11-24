@@ -1,0 +1,185 @@
+{
+  "plataforma": "BTG",
+  "ofertas": [
+    {
+      "tipo": "CRI",
+      "emissor": "AUTOMOB",
+      "nome_exibido": "CRI - AUTOMOB",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 12,04%"
+        }
+      ],
+      "vencimento": "15/04/2030",
+      "aplicacao_minima": "R$ 1.058,47",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "22L2288690",
+      "juros": "Semestral",
+      "amortizacao": "No Vencimento",
+      "cortada": false
+    },
+    {
+      "tipo": "CRA",
+      "emissor": "FS FLORESTAL - FS BIO",
+      "nome_exibido": "CRA - FS FLORESTAL - FS BIO",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 11,31%"
+        }
+      ],
+      "vencimento": "15/06/2032",
+      "aplicacao_minima": "R$ 1.031,88",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "CRA0240066E",
+      "juros": "Mensal",
+      "amortizacao": "Anual a partir de 16/06/2031",
+      "cortada": false
+    },
+    {
+      "tipo": "CRA",
+      "emissor": "ARMAC",
+      "nome_exibido": "CRA - ARMAC",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 10,16%"
+        }
+      ],
+      "vencimento": "15/06/2029",
+      "aplicacao_minima": "R$ 1.181,13",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "CRA022007KH",
+      "juros": "Semestral",
+      "amortizacao": "Anual a partir de 16/06/2028",
+      "cortada": false
+    },
+    {
+      "tipo": "CRA",
+      "emissor": "ZAMP",
+      "nome_exibido": "CRA - ZAMP",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 9,68%"
+        }
+      ],
+      "vencimento": "15/02/2029",
+      "aplicacao_minima": "R$ 1.104,71",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "CRA024001QA",
+      "juros": "Semestral",
+      "amortizacao": "No Vencimento",
+      "cortada": false
+    },
+    {
+      "tipo": "CRI",
+      "emissor": "COGNA",
+      "nome_exibido": "CRI - COGNA",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 7,99%"
+        }
+      ],
+      "vencimento": "16/07/2029",
+      "aplicacao_minima": "R$ 1.230,68",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "22E1321749",
+      "juros": "Semestral",
+      "amortizacao": "Anual a partir de 17/07/2028",
+      "cortada": false
+    },
+    {
+      "tipo": "CRI",
+      "emissor": "REDE D'OR",
+      "nome_exibido": "CRI - REDE D'OR",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 7,69%"
+        }
+      ],
+      "vencimento": "15/06/2029",
+      "aplicacao_minima": "R$ 1.183,15",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "22D1289007",
+      "juros": "Semestral",
+      "amortizacao": "No Vencimento",
+      "cortada": false
+    },
+    {
+      "tipo": "CRI",
+      "emissor": "SMARTFIT",
+      "nome_exibido": "CRI - SMARTFIT",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 6,89%"
+        }
+      ],
+      "vencimento": "15/10/2029",
+      "aplicacao_minima": "R$ 1.227,68",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "22J0344571",
+      "juros": "Semestral",
+      "amortizacao": "Anual a partir de 15/10/2027",
+      "cortada": false
+    },
+    {
+      "tipo": "CRI",
+      "emissor": "MERCADO LIVRE",
+      "nome_exibido": "CRI - MERCADO LIVRE",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 6,51%"
+        }
+      ],
+      "vencimento": "15/08/2029",
+      "aplicacao_minima": "R$ 1.234,72",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "22H1522692",
+      "juros": "Anual",
+      "amortizacao": "Anual a partir de 15/08/2028",
+      "cortada": false
+    },
+    {
+      "tipo": "CRA",
+      "emissor": "MARFRIG",
+      "nome_exibido": "CRA - MARFRIG",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "IPCA + 2,53%"
+        }
+      ],
+      "vencimento": "15/01/2027",
+      "aplicacao_minima": "R$ 1.290,12",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": "CRA022000XE",
+      "juros": "Semestral",
+      "amortizacao": "No Vencimento",
+      "cortada": false
+    }
+  ]
+}

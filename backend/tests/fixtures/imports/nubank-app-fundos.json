@@ -1,0 +1,45 @@
+{
+  "plataforma": "NUBANK",
+  "ofertas": [
+    {
+      "tipo": "FUNDO_RF",
+      "emissor": "Nu Reserva Planejada - Resp. Ltda",
+      "nome_exibido": "Nu Reserva Planejada - Resp. Ltda",
+      "taxas": [
+        {
+          "rotulo": "Últimos 12 meses",
+          "texto": "14,13%"
+        }
+      ],
+      "vencimento": null,
+      "aplicacao_minima": "R$ 200,00",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": false
+    },
+    {
+      "tipo": "OUTRO",
+      "emissor": "Nu Ultravioleta Multiestratégia - Resp. Ltda",
+      "nome_exibido": "Nu Ultravioleta Multiestratégia - Resp. Ltda",
+      "taxas": [
+        {
+          "rotulo": "Últimos 12 meses",
+          "texto": "9%"
+        }
+      ],
+      "vencimento": null,
+      "aplicacao_minima": "R$ 500,00",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": false
+    }
+  ]
+}

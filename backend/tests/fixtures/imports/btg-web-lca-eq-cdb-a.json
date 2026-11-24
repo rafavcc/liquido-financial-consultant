@@ -1,0 +1,53 @@
+{
+  "plataforma": "BTG",
+  "ofertas": [
+    {
+      "tipo": "LCA",
+      "emissor": "Banco BTG Pactual",
+      "nome_exibido": "LCA - Banco BTG Pactual",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "89,00% do CDI"
+        },
+        {
+          "rotulo": "Taxa Eq. do CDB",
+          "texto": "110,91% do CDI"
+        }
+      ],
+      "vencimento": "24/08/2027",
+      "aplicacao_minima": "R$ 1.000,00",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "No vencimento",
+      "amortizacao": null,
+      "cortada": false
+    },
+    {
+      "tipo": "LCA",
+      "emissor": "Banco BTG Pactual",
+      "nome_exibido": "LCA - Banco BTG Pactual",
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "88,00% do CDI"
+        },
+        {
+          "rotulo": "Taxa Eq. do CDB",
+          "texto": "109,98% do CDI"
+        }
+      ],
+      "vencimento": "24/05/2027",
+      "aplicacao_minima": "R$ 1.000,00",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "No vencimento",
+      "amortizacao": null,
+      "cortada": false
+    }
+  ]
+}

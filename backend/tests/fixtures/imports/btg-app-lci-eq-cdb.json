@@ -1,0 +1,68 @@
+{
+  "plataforma": "BTG",
+  "ofertas": [
+    {
+      "tipo": "LCI",
+      "emissor": "Banco BTG Pactual",
+      "nome_exibido": null,
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "90,00% do CDI"
+        },
+        {
+          "rotulo": "Taxa eq. CDB",
+          "texto": "108,46% do CDI"
+        }
+      ],
+      "vencimento": "23/11/2027",
+      "aplicacao_minima": "R$ 500,00",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": false
+    },
+    {
+      "tipo": "LCI",
+      "emissor": "Banco BTG Pactual",
+      "nome_exibido": null,
+      "taxas": [
+        {
+          "rotulo": "Taxa",
+          "texto": "90,00% do CDI"
+        },
+        {
+          "rotulo": "Taxa eq. CDB",
+          "texto": "107,93% do CDI"
+        }
+      ],
+      "vencimento": "23/05/2028",
+      "aplicacao_minima": "R$ 500,00",
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": false
+    },
+    {
+      "tipo": "LCI",
+      "emissor": "Banco BTG Pactual",
+      "nome_exibido": null,
+      "taxas": [],
+      "vencimento": null,
+      "aplicacao_minima": null,
+      "liquidez": null,
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": null,
+      "amortizacao": null,
+      "cortada": true
+    }
+  ]
+}

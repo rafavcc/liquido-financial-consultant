@@ -375,7 +375,7 @@ def test_two_unrelated_rates_are_ambiguous():
 
 def test_interpret_fixtures():   # usa backend/tests/fixtures/imports/*.json da Task 4
     # btg-app-lci-eq-cdb: 2 Created LCI 0.90 BTG; xp-app-cdb-lista: 2 Created + 1 Ignored("cortada");
-    # xp-web-carteira-fundos: 0 ofertas; nubank-app-fundos: 2 Ignored("fundo");
+    # xp-web-carteira-fundos: 0 ofertas; nubank-app-fundos: Ignored("fundo") + Ignored("tipo não suportado: OUTRO");
     # nubank-app-cdb-ultravioleta: CDB 1.08 Cloudwalk Infinitepay venc 2028-11-18, plataforma "Nubank";
     # xp-web-tabela-lcd: LCD BNDES 0.87 venc 2030-03-15; btg-web-cri-cra-ipca: CRI AUTOMOB IPCA_MAIS 0.1204,
     #   juros_periodicos SEMESTRAL, "Código: 22L2288690" nas observações;

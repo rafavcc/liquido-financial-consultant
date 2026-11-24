@@ -1,0 +1,145 @@
+{
+  "plataforma": "XP",
+  "ofertas": [
+    {
+      "tipo": "LCD",
+      "emissor": "BRDE",
+      "nome_exibido": "LCD BRDE - FEV/2033",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade (a.a)",
+          "texto": "91% CDI"
+        }
+      ],
+      "vencimento": "09/02/2033",
+      "aplicacao_minima": "R$ 1.098,10",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "-",
+      "amortizacao": "-",
+      "cortada": false
+    },
+    {
+      "tipo": "LCD",
+      "emissor": "BANDES (ESPIRITO SANT...",
+      "nome_exibido": "LCD BANDES (ESPIRITO SANT...",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade (a.a)",
+          "texto": "90% CDI"
+        }
+      ],
+      "vencimento": "27/10/2031",
+      "aplicacao_minima": "R$ 1.007,34",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "-",
+      "amortizacao": "-",
+      "cortada": false
+    },
+    {
+      "tipo": "LCD",
+      "emissor": "BNDES",
+      "nome_exibido": "LCD BNDES - MAR/2030",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade (a.a)",
+          "texto": "87% CDI"
+        }
+      ],
+      "vencimento": "15/03/2030",
+      "aplicacao_minima": "R$ 13.032,67",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "-",
+      "amortizacao": "-",
+      "cortada": false
+    },
+    {
+      "tipo": "LCD",
+      "emissor": "BNDES",
+      "nome_exibido": "LCD BNDES - MAR/2030",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade (a.a)",
+          "texto": "87% CDI"
+        }
+      ],
+      "vencimento": "15/03/2030",
+      "aplicacao_minima": "R$ 13.032,67",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "-",
+      "amortizacao": "-",
+      "cortada": false
+    },
+    {
+      "tipo": "LCD",
+      "emissor": "BNDES",
+      "nome_exibido": "LCD BNDES - MAR/2030",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade (a.a)",
+          "texto": "87% CDI"
+        }
+      ],
+      "vencimento": "15/03/2030",
+      "aplicacao_minima": "R$ 13.032,67",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "-",
+      "amortizacao": "-",
+      "cortada": false
+    },
+    {
+      "tipo": "LCD",
+      "emissor": "BNDES",
+      "nome_exibido": "LCD BNDES - MAR/2030",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade (a.a)",
+          "texto": "87% CDI"
+        }
+      ],
+      "vencimento": "15/03/2030",
+      "aplicacao_minima": "R$ 13.032,67",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "-",
+      "amortizacao": "-",
+      "cortada": false
+    },
+    {
+      "tipo": "LCD",
+      "emissor": "BNDES",
+      "nome_exibido": "LCD BNDES - DEZ/2027",
+      "taxas": [
+        {
+          "rotulo": "Rentabilidade (a.a)",
+          "texto": "86% CDI"
+        }
+      ],
+      "vencimento": "15/12/2027",
+      "aplicacao_minima": "R$ 13.006,31",
+      "liquidez": "NO_VENCIMENTO",
+      "carencia": null,
+      "disponivel_ate": null,
+      "codigo": null,
+      "juros": "-",
+      "amortizacao": "-",
+      "cortada": false
+    }
+  ]
+}
