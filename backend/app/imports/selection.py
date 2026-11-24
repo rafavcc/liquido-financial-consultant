@@ -64,6 +64,9 @@ def choose_rate(
 
     # "103,75%" ao lado de "103,75% do CDI": o número solto é a mesma taxa sem o indexador
     com_indexador = {k[2] for k in kept if k[1] != Indexer.PRE}
+    for k in kept:
+        if k[1] == Indexer.PRE and k[2] in com_indexador:
+            ignoradas.append(f"{k[0]} (mesma taxa sem indexador)")
     kept = [k for k in kept if not (k[1] == Indexer.PRE and k[2] in com_indexador)]
 
     if (

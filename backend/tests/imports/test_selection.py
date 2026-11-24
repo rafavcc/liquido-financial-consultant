@@ -97,3 +97,9 @@ def test_eq_cdb_still_discarded_for_exempt_types():
     taxas = [RawRate(rotulo="Taxa", texto="90,00% do CDI"), RawRate(rotulo="Taxa eq. CDB", texto="108,46% do CDI")]
     r = choose_rate(taxas, ProductType.LCI, date(2027, 11, 23), Settings(), T)
     assert r.taxa == D("0.9")
+
+
+def test_bare_number_dropped_as_same_rate_is_reported():
+    taxas = [RawRate(rotulo="Taxa Eq. do CDB", texto="103,75% do CDI"), RawRate(rotulo="Taxa", texto="103,75%")]
+    r = choose_rate(taxas, ProductType.CDB, date(2028, 11, 23), Settings(), T)
+    assert "103,75% (mesma taxa sem indexador)" in r.ignoradas
