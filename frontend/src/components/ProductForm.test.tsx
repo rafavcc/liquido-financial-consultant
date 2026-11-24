@@ -141,14 +141,14 @@ test("Fundo envia liquidez DIARIA, vencimento nulo e campos do fundo", async () 
 test("resposta 422 mostra mensagens no topo e junto ao campo", async () => {
   const user = userEvent.setup();
   mocked.products.create.mockRejectedValue(
-    new ApiError(422, ["LCI exige carência mínima de 12 meses", "taxa: valor fora do intervalo"]),
+    new ApiError(422, ["LCI exige prazo mínimo de 12 meses", "taxa: valor fora do intervalo"]),
   );
   setup();
   await preencheBasico(user);
   await user.type(screen.getByLabelText("Taxa"), "112");
   await user.click(screen.getByRole("button", { name: "Salvar" }));
   const alert = await screen.findByRole("alert");
-  expect(within(alert).getByText("LCI exige carência mínima de 12 meses")).toBeInTheDocument();
+  expect(within(alert).getByText("LCI exige prazo mínimo de 12 meses")).toBeInTheDocument();
   expect(within(alert).getByText("taxa: valor fora do intervalo")).toBeInTheDocument();
   expect(screen.getByText("valor fora do intervalo", { selector: "p" })).toBeInTheDocument();
 });
@@ -245,4 +245,11 @@ test("trocar o tipo limpa erros do topo e dos campos", async () => {
   await user.selectOptions(screen.getByLabelText("Tipo"), "LCA");
   expect(screen.queryByRole("alert")).toBeNull();
   expect(screen.queryByText("inválida")).toBeNull();
+});
+
+test("LCD existe como tipo e não oferece liquidez Diária", async () => {
+  const user = userEvent.setup();
+  setup();
+  await user.selectOptions(screen.getByLabelText("Tipo"), "LCD");
+  expect(within(screen.getByLabelText("Liquidez")).queryByRole("option", { name: "Diária" })).toBeNull();
 });

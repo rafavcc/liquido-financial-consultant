@@ -3,11 +3,22 @@ import { decimalToBRLInput, fractionToPercent, percentToFraction } from "./perce
 import { parseBRL } from "./parse";
 
 /** Tipos manuais, na ordem em que aparecem nas isenções. */
-export const TIPOS_MANUAIS: ProductType[] = ["CDB", "LCI", "LCA", "CRI", "CRA", "FUNDO_RF"];
+export const TIPOS_MANUAIS: ProductType[] = ["CDB", "LCI", "LCA", "LCD", "CRI", "CRA", "FUNDO_RF"];
 export const TIPOS_TESOURO: ProductType[] = [
   "TESOURO_SELIC", "TESOURO_PREFIXADO", "TESOURO_PREFIXADO_JUROS", "TESOURO_IPCA",
   "TESOURO_IPCA_JUROS", "TESOURO_RENDA_MAIS", "TESOURO_EDUCA_MAIS",
 ];
+
+export const PRAZOS = [
+  { key: "lci", field: "prazo_min_meses_lci", label: "LCI" },
+  { key: "lciIpca", field: "prazo_min_meses_lci_ipca", label: "LCI IPCA+" },
+  { key: "lca", field: "prazo_min_meses_lca", label: "LCA" },
+  { key: "lcaIpca", field: "prazo_min_meses_lca_ipca", label: "LCA IPCA+" },
+  { key: "lcd", field: "prazo_min_meses_lcd", label: "LCD" },
+] as const;
+export type PrazoKey = (typeof PRAZOS)[number]["key"];
+export type PrazoField = (typeof PRAZOS)[number]["field"];
+export type PrazosForm = Record<PrazoKey, string>;
 
 export interface ManualRow { ano: string; selic: string; ipca: string }
 
@@ -28,6 +39,7 @@ export interface SettingsForm {
   rows: ManualRow[];
   ttl: string;
   fgc: string;
+  prazos: PrazosForm;
 }
 
 export function toForm(s: Settings): SettingsForm {
@@ -52,6 +64,7 @@ export function toForm(s: Settings): SettingsForm {
     })),
     ttl: String(s.market_cache_ttl_hours),
     fgc: decimalToBRLInput(s.fgc_limite),
+    prazos: Object.fromEntries(PRAZOS.map((p) => [p.key, String(s[p.field])])) as PrazosForm,
   };
 }
 
@@ -122,6 +135,13 @@ export function buildSettings(f: SettingsForm, orig: Settings): BuildResult {
   const ttl = integer(f.ttl);
   if (ttl === null || ttl < 1) fail("market_cache_ttl_hours", "Informe um número de horas inteiro, a partir de 1");
 
+  const prazos = {} as Record<PrazoField, number>;
+  for (const p of PRAZOS) {
+    const v = integer(f.prazos[p.key]);
+    if (v === null) fail(p.field, "Informe um número de meses inteiro, a partir de 0");
+    prazos[p.field] = v ?? 0;
+  }
+
   // Linhas manuais: só bloqueiam o salvamento no modo Manual; no Focus, as originais seguem intactas.
   const rowErrors: Record<string, string> = {};
   const selicMap: Record<string, string> = {};
@@ -164,6 +184,7 @@ export function buildSettings(f: SettingsForm, orig: Settings): BuildResult {
     manual_ipca_by_year: rowsOk ? ipcaMap : orig.manual_ipca_by_year,
     market_cache_ttl_hours: ttl ?? 0,
     fgc_limite: fgc ?? "",
+    ...prazos,
   };
   return { settings, errors };
 }
@@ -201,11 +222,16 @@ export function fieldLabel(path: string): string {
     case "manual_ipca_by_year": return idx ? `IPCA manual de ${idx}` : "IPCA manual";
     case "market_cache_ttl_hours": return "Validade dos dados em cache";
     case "fgc_limite": return "Limite do FGC";
+    case "prazo_min_meses_lci": return "Prazo mínimo da LCI";
+    case "prazo_min_meses_lci_ipca": return "Prazo mínimo da LCI IPCA+";
+    case "prazo_min_meses_lca": return "Prazo mínimo da LCA";
+    case "prazo_min_meses_lca_ipca": return "Prazo mínimo da LCA IPCA+";
+    case "prazo_min_meses_lcd": return "Prazo mínimo da LCD";
     default: return path;
   }
 }
 
-export type GrupoId = "tributacao" | "custos" | "projecoes" | "dados" | "alertas";
+export type GrupoId = "tributacao" | "custos" | "projecoes" | "dados" | "alertas" | "prazos";
 
 export function fieldGroup(path: string): GrupoId | null {
   const head = path.split(".")[0];
@@ -214,6 +240,7 @@ export function fieldGroup(path: string): GrupoId | null {
   if (["projection_mode", "manual_selic_by_year", "manual_ipca_by_year", "spread_cdi_selic"].includes(head)) return "projecoes";
   if (head === "market_cache_ttl_hours") return "dados";
   if (head === "fgc_limite") return "alertas";
+  if (head.startsWith("prazo_min_meses_")) return "prazos";
   return null;
 }
 

@@ -6,7 +6,7 @@ import type { ProductType, Settings } from "../api/types";
 import { IconChevron, IconPlus, IconRefresh, IconTrash } from "../components/Icons";
 import { formatDateTime } from "../lib/format";
 import {
-  buildSettings, fieldGroup, fieldLabel, isDirty, parseServerError, TIPOS_MANUAIS, TIPOS_TESOURO, toForm,
+  buildSettings, fieldGroup, PRAZOS, fieldLabel, isDirty, parseServerError, TIPOS_MANUAIS, TIPOS_TESOURO, toForm,
   type GrupoId, type SettingsForm,
 } from "../lib/settingsForm";
 import { tipoLabel } from "../lib/labels";
@@ -490,6 +490,16 @@ export function Configuracoes() {
         help="Avisos mostrados nos cartões dos produtos.">
         <Box label="Limite do FGC por instituição (R$)" suffix="R$" inputMode="numeric" value={form.fgc} error={err("fgc_limite")} onChange={(v) => edit({ fgc: v })}
           className="sm:max-w-xs" hint="Você é avisado quando o valor aplicado em um emissor passa deste limite de proteção do FGC." />
+      </Group>
+
+      <Group id="prazos" title="Prazos mínimos" localInvalid={localIn("prazos")} errors={server}
+        help="Prazo mínimo, em meses, que a regra do mercado exige de cada título isento. Produtos abaixo disso são recusados no cadastro.">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {PRAZOS.map((p) => (
+            <Box key={p.key} label={`${p.label} (meses)`} suffix="meses" inputMode="numeric" value={form.prazos[p.key]} error={err(p.field)}
+              onChange={(v) => edit({ prazos: { ...form.prazos, [p.key]: v } })} />
+          ))}
+        </div>
       </Group>
 
       {dirty && (

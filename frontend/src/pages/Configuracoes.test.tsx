@@ -42,8 +42,11 @@ const settings: Settings = {
   manual_ipca_by_year: {},
   market_cache_ttl_hours: 6,
   fgc_limite: "250000",
-  carencia_min_meses_lci: 12,
-  carencia_min_meses_lca: 9,
+  prazo_min_meses_lci: 6,
+  prazo_min_meses_lci_ipca: 36,
+  prazo_min_meses_lca: 6,
+  prazo_min_meses_lca_ipca: 12,
+  prazo_min_meses_lcd: 12,
 };
 
 function setup() {
@@ -310,4 +313,25 @@ test("IR de fundo de curto prazo é editável e enviado como fração", async ()
   const sent = mocked.settings.update.mock.calls[0][0];
   expect(sent.ir_fundo_curto_acima_180).toBe("0.21");
   expect(sent.ir_fundo_curto_ate_180).toBe("0.225");
+});
+
+test("prazos mínimos por indexação aparecem e salvar envia o novo valor", async () => {
+  setup();
+  expect(await screen.findByLabelText("LCI (meses)")).toHaveValue("6");
+  expect(screen.getByLabelText("LCI IPCA+ (meses)")).toHaveValue("36");
+  expect(screen.getByLabelText("LCA (meses)")).toHaveValue("6");
+  expect(screen.getByLabelText("LCA IPCA+ (meses)")).toHaveValue("12");
+  expect(screen.getByLabelText("LCD (meses)")).toHaveValue("12");
+  const campo = screen.getByLabelText("LCI IPCA+ (meses)");
+  await userEvent.clear(campo);
+  await userEvent.type(campo, "24");
+  await userEvent.click(salvar());
+  await waitFor(() => expect(mocked.settings.update).toHaveBeenCalled());
+  expect(mocked.settings.update.mock.calls[0][0]).toEqual({ ...settings, prazo_min_meses_lci_ipca: 24 });
+});
+
+test("LCD aparece entre os isentos de IR", async () => {
+  setup();
+  const ir = await screen.findByRole("group", { name: /IR/ });
+  expect(within(ir).getByLabelText("LCD")).toBeInTheDocument();
 });

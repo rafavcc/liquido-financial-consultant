@@ -16,16 +16,19 @@ interface Props {
   plataformas?: string[];
 }
 
-type TipoForm = Extract<ProductType, "CDB" | "LCI" | "LCA" | "CRI" | "CRA" | "FUNDO_RF">;
+type TipoForm = Extract<ProductType, "CDB" | "LCI" | "LCA" | "LCD" | "CRI" | "CRA" | "FUNDO_RF">;
 
 const TIPOS: { id: TipoForm; label: string }[] = [
   { id: "CDB", label: "CDB" },
   { id: "LCI", label: "LCI" },
   { id: "LCA", label: "LCA" },
+  { id: "LCD", label: "LCD" },
   { id: "CRI", label: "CRI" },
   { id: "CRA", label: "CRA" },
   { id: "FUNDO_RF", label: "Fundo RF" },
 ];
+
+const SEM_LIQUIDEZ_DIARIA: TipoForm[] = ["LCI", "LCA", "LCD"];
 
 const INDEXADORES: { id: Indexer; label: string }[] = [
   { id: "PRE", label: "Prefixado" },
@@ -255,7 +258,7 @@ export function ProductForm({ open, onOpenChange, product, plataformas = [] }: P
       ...s,
       tipo,
       indexador: tipo === "FUNDO_RF" && !INDEXADORES_FUNDO.includes(s.indexador) ? "PCT_CDI" : s.indexador,
-      liquidez: (tipo === "LCI" || tipo === "LCA") && s.liquidez === "DIARIA" ? "NO_VENCIMENTO" : s.liquidez,
+      liquidez: SEM_LIQUIDEZ_DIARIA.includes(tipo) && s.liquidez === "DIARIA" ? "NO_VENCIMENTO" : s.liquidez,
     }));
   };
 
@@ -268,7 +271,7 @@ export function ProductForm({ open, onOpenChange, product, plataformas = [] }: P
   };
 
   const indexadores = INDEXADORES.filter((i) => !fundo || INDEXADORES_FUNDO.includes(i.id));
-  const liquidezOpts = LIQUIDEZ.filter((l) => !(l.id === "DIARIA" && (f.tipo === "LCI" || f.tipo === "LCA")));
+  const liquidezOpts = LIQUIDEZ.filter((l) => !(l.id === "DIARIA" && SEM_LIQUIDEZ_DIARIA.includes(f.tipo)));
   const taxaUi = TAXA_UI[f.indexador];
   const sugestoes = [...new Set([...PLATAFORMAS_BASE, ...plataformas])].filter((p) => p !== "Tesouro Direto");
 

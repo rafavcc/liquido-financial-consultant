@@ -18,7 +18,7 @@ export type TipoGrupo = "CDB" | "LCI_LCA" | "CRI_CRA" | "TESOURO" | "FUNDOS";
 
 export const TIPO_GRUPOS: { id: TipoGrupo; label: string }[] = [
   { id: "CDB", label: "CDB" },
-  { id: "LCI_LCA", label: "LCI/LCA" },
+  { id: "LCI_LCA", label: "LCI/LCA/LCD" },
   { id: "CRI_CRA", label: "CRI/CRA" },
   { id: "TESOURO", label: "Tesouro" },
   { id: "FUNDOS", label: "Fundos" },
@@ -26,7 +26,7 @@ export const TIPO_GRUPOS: { id: TipoGrupo; label: string }[] = [
 
 export function tipoGrupo(t: ProductType): TipoGrupo {
   if (t === "CDB") return "CDB";
-  if (t === "LCI" || t === "LCA") return "LCI_LCA";
+  if (t === "LCI" || t === "LCA" || t === "LCD") return "LCI_LCA";
   if (t === "CRI" || t === "CRA") return "CRI_CRA";
   if (t === "FUNDO_RF") return "FUNDOS";
   return "TESOURO";
@@ -46,7 +46,7 @@ const TIPO_LABEL: Partial<Record<ProductType, string>> = {
 export const tipoLabel = (t: ProductType): string => TIPO_LABEL[t] ?? t;
 
 /** Isenção de IR: lista vem de /settings (ir_exempt_types); esta é só o fallback enquanto carrega. */
-export const ISENTOS_PADRAO: ProductType[] = ["LCI", "LCA", "CRI", "CRA"];
+export const ISENTOS_PADRAO: ProductType[] = ["LCI", "LCA", "LCD", "CRI", "CRA"];
 export const isIsento = (t: ProductType, isentos: ProductType[] = ISENTOS_PADRAO): boolean => isentos.includes(t);
 
 /** Prazo de resgate "D+N", só para fundos. */

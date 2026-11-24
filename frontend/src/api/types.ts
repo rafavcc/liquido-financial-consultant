@@ -2,7 +2,7 @@
 export type Decimal = string;
 
 export type ProductType =
-  | "CDB" | "LCI" | "LCA" | "CRI" | "CRA"
+  | "CDB" | "LCI" | "LCA" | "LCD" | "CRI" | "CRA"
   | "TESOURO_SELIC" | "TESOURO_PREFIXADO" | "TESOURO_PREFIXADO_JUROS"
   | "TESOURO_IPCA" | "TESOURO_IPCA_JUROS" | "TESOURO_RENDA_MAIS" | "TESOURO_EDUCA_MAIS"
   | "FUNDO_RF";
@@ -117,6 +117,9 @@ export interface Settings {
   manual_ipca_by_year: Record<string, Decimal>;
   market_cache_ttl_hours: number;
   fgc_limite: Decimal;
-  carencia_min_meses_lci: number;
-  carencia_min_meses_lca: number;
+  prazo_min_meses_lci: number;
+  prazo_min_meses_lci_ipca: number;
+  prazo_min_meses_lca: number;
+  prazo_min_meses_lca_ipca: number;
+  prazo_min_meses_lcd: number;
 }
