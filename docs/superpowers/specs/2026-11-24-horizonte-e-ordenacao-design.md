@@ -52,7 +52,8 @@ usuário poder ter o dinheiro de volta sem perder o contratado.
 | Caso | Horizonte |
 |---|---|
 | Prazo de saída = vencimento (sem liquidez, Tesouro não-Selic) | vencimento |
-| Liquidez diária, fundos, `TESOURO_SELIC` | min(vencimento, hoje + 1 ano) — fundos sem vencimento: hoje + 1 ano |
+| Liquidez diária, `TESOURO_SELIC` | min(vencimento, hoje + 1 ano) |
+| Fundos | max(hoje + 1 ano, próximo dia útil após hoje + prazo de resgate) — continua resgatável mesmo com D+N > 1 ano |
 | Liquidez diária após carência | min(vencimento, max(data_carencia, hoje + 1 ano)) |
 
 "hoje + 1 ano" usa a mesma regra do modo `UM_ANO` (mesmo dia do ano seguinte, próximo dia útil).
