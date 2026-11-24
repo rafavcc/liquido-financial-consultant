@@ -48,6 +48,7 @@ test("sem data e custo-benefício", async ({ page }) => {
   await expect(secao.locator("article").first()).toBeVisible();
   await expect(secao.locator("article").first().getByText(/a\.a\./).first()).toBeVisible();
   await page.getByLabel("Ordenar por").selectOption("CUSTO_BENEFICIO");
+  await expect(page.getByLabel("Ordenar por")).toHaveValue("CUSTO_BENEFICIO");
   await expect(secao.locator("article").first()).toBeVisible();
   await page.getByRole("radio", { name: "2 anos" }).click();
   await expect(page.getByText(/Resgate em \d{2}\/\d{2}\/\d{4}/)).toBeVisible();

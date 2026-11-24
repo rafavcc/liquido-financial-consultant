@@ -145,7 +145,10 @@ export function Comparador() {
         ? "A data deve ser posterior a hoje."
         : null;
   const erroApi = sim.error instanceof ApiError ? sim.error.messages : sim.error ? ["Erro inesperado ao simular."] : [];
-  const alvo = data?.data_alvo ?? (horizonte === "DATA" ? dData : null);
+  // keepPreviousData: a resposta anterior só vale como "atual" quando é do horizonte selecionado.
+  const atual = data !== undefined && data.horizonte === horizonte;
+  const dataResolvida = atual ? data.data_alvo : null;
+  const alvo = dataResolvida ?? (horizonte === "DATA" ? dData : null);
   const fmtAlvo = alvo ? formatDate(alvo) : "";
 
   return (
@@ -163,7 +166,7 @@ export function Comparador() {
         }}
         horizonte={horizonte}
         onHorizonte={setHorizonte}
-        dataResolvida={data?.data_alvo ?? null}
+        dataResolvida={dataResolvida}
         onData={(d) => {
           setDataAlvo(d);
           if (d) writeStore(K_DATA, d);
@@ -195,7 +198,7 @@ export function Comparador() {
 
       {data && (
         <div className={`space-y-8 transition-opacity ${sim.isFetching ? "opacity-60" : ""}`}>
-          {semData ? (
+          {data.horizonte === "SEM_DATA" ? (
             <section aria-label="Todos os produtos">
               <SectionHeader
                 tone="pos"
@@ -233,7 +236,7 @@ export function Comparador() {
           </section>
           )}
 
-          {(!semData || vermelhos.lista.length > 0) && (
+          {(data.horizonte !== "SEM_DATA" || vermelhos.lista.length > 0) && (
           <section aria-label="Vencem depois da sua data">
             <SectionHeader
               tone="neg"

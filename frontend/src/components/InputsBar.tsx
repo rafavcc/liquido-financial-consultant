@@ -73,7 +73,7 @@ export function InputsBar({ valor, dataAlvo, minDate, onValor, onData, horizonte
           <p className="text-sm text-muted">Resgate em {formatDate(dataResolvida)}</p>
         )}
         {horizonte === "SEM_DATA" && (
-          <p className="text-sm text-muted">Cada produto até o vencimento (ou 1 ano, se tiver liquidez diária)</p>
+          <p className="text-sm text-muted">Cada produto até o vencimento; com liquidez diária, fundos ou carência, por 1 ano (ou até poder resgatar)</p>
         )}
       </div>
     </section>

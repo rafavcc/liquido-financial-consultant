@@ -1,6 +1,6 @@
 import type { SimulationResult } from "../api/types";
 import { formatBRL, formatDate, formatPct, formatPctSigned, isNegativePct } from "../lib/format";
-import { indexLabel, isIsento, prazoSaidaLabel, resgateLabel, tipoLabel } from "../lib/labels";
+import { indexLabel, isIsento, prazoSaidaLabel, tipoLabel } from "../lib/labels";
 import type { ProductType } from "../api/types";
 import { AlertBadge } from "./AlertBadge";
 
@@ -32,7 +32,6 @@ export function ProductCard({ result, rank, onSelect, isentoTypes, destaque = "v
   const p = result.product;
   const late = result.secao === "VENCE_DEPOIS";
   const off = result.secao === "INDISPONIVEL";
-  const dn = resgateLabel(p);
   const prazo = prazoSaidaLabel(result, hoje ?? hojeIso());
   const porTaxa = destaque === "taxa" && result.taxa_liquida_aa !== null;
 
@@ -64,7 +63,6 @@ export function ProductCard({ result, rank, onSelect, isentoTypes, destaque = "v
             </h3>
             <p className="mt-0.5 text-xs text-muted">
               {p.plataforma} · {tipoLabel(p.tipo)}
-              {dn && ` · ${dn}`}
             </p>
           </div>
         </div>

@@ -112,3 +112,13 @@ test("sem data: não resgatável em vence_depois continua visível", async () =>
   await userEvent.click(await screen.findByRole("radio", { name: "Sem data" }));
   expect(await screen.findByText("CDB Preso")).toBeInTheDocument();
 });
+
+test("ao trocar o horizonte, a data resolvida antiga não aparece", async () => {
+  mocked.simulate.mockResolvedValue({ ...fixtureResponse, horizonte: "UM_ANO", data_alvo: "2027-11-19" });
+  setup();
+  await userEvent.click(await screen.findByRole("radio", { name: "1 ano" }));
+  expect(await screen.findByText(/Resgate em 19\/11\/2027/)).toBeInTheDocument();
+  mocked.simulate.mockReturnValue(new Promise(() => {}));
+  await userEvent.click(screen.getByRole("radio", { name: "2 anos" }));
+  await waitFor(() => expect(screen.queryByText(/Resgate em/)).toBeNull());
+});
