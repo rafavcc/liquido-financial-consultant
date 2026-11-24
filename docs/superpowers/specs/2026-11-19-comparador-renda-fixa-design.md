@@ -2,6 +2,10 @@
 
 Data: 2026-11-19 · Status: aprovado (2026-11-19)
 
+> **Atualização 2026-11-24:** as entradas do Comparador (horizonte: sem data, 1 ano, 2 anos ou data) e os
+> modos de ordenação (valor líquido, taxa líquida a.a., custo-benefício, menor prazo de saída, segurança)
+> são definidos em `2026-11-24-horizonte-e-ordenacao-design.md`, que prevalece onde este documento difere.
+
 ## 1. Intenção
 
 Ferramenta **pessoal** (um único usuário) para apoiar decisões de investimento em renda fixa
