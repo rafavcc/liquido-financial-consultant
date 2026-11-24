@@ -5,7 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 from app.data.market import MarketSnapshot
-from app.domain.horizon import horizonte_natural, prazo_saida_dias
+from app.domain.horizon import Horizonte, horizonte_natural, prazo_saida_dias
 from app.domain.products.base import AlertCode, Product, Section, SimContext, SimulationResult
 
 log = logging.getLogger(__name__)
@@ -33,6 +33,8 @@ class MarketSummary(BaseModel):
 
 
 class SimulationResponse(BaseModel):
+    horizonte: Horizonte
+    data_alvo: date | None
     vence_ate_data: list[SimulationResult]
     vence_depois: list[SimulationResult]
     indisponiveis: list[SimulationResult]

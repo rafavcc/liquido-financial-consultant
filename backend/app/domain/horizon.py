@@ -1,9 +1,17 @@
 """Datas de horizonte da simulação e prazo de saída (dias corridos)."""
 
 from datetime import date, timedelta
+from enum import StrEnum
 
 from app.domain.calendar import BusinessCalendar
 from app.domain.products.base import Liquidity, ProductData, ProductType
+
+
+class Horizonte(StrEnum):
+    SEM_DATA = "SEM_DATA"
+    UM_ANO = "UM_ANO"
+    DOIS_ANOS = "DOIS_ANOS"
+    DATA = "DATA"
 
 
 def anos_a_frente(today: date, anos: int, cal: BusinessCalendar) -> date:
