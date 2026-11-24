@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -11,7 +10,7 @@ from decimal import Decimal
 from app.domain.products.base import Indexer, ProductType
 from app.domain.settings import Settings
 from app.domain.taxes import ir_rate
-from app.imports.parsing import parse_rate
+from app.imports.parsing import parse_rate, plain
 from app.imports.schema import RawRate
 
 EXCLUDED_LABEL = re.compile(r"equival|equiv|\beq\b|bruto|gross|riscad|\bir\b", re.I)
@@ -28,11 +27,6 @@ class RateChoice:
 @dataclass
 class RateAmbiguous:
     textos: list[str]
-
-
-def _plain(texto: str) -> str:
-    nfd = unicodedata.normalize("NFD", texto)
-    return "".join(c for c in nfd if not unicodedata.combining(c))
 
 
 def _describe(valor: str, rotulo: str) -> str:
@@ -57,7 +51,7 @@ def choose_rate(
                 break
         else:
             continue
-        if EXCLUDED_LABEL.search(_plain(valor)) or EXCLUDED_LABEL.search(_plain(rotulo)):
+        if EXCLUDED_LABEL.search(plain(valor)) or EXCLUDED_LABEL.search(plain(rotulo)):
             ignoradas.append(_describe(valor, rotulo))
             continue
         if any(k[1:] == parsed for k in kept):

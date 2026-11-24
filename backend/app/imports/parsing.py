@@ -28,8 +28,9 @@ def _fraction(num: str) -> Decimal:
     return (Decimal(num.replace(",", ".")) / 100).normalize()
 
 
-def _plain(texto: str) -> str:
-    nfd = unicodedata.normalize("NFD", texto)
+def plain(texto: str | None) -> str:
+    """Sem acento, minúsculo e sem espaços nas pontas; None vira vazio."""
+    nfd = unicodedata.normalize("NFD", (texto or "").strip())
     return "".join(c for c in nfd if not unicodedata.combining(c)).lower()
 
 
@@ -51,7 +52,7 @@ def parse_date(texto: str) -> date | None:
             dia, mes, ano = int(m.group(1)), int(m.group(2)), m.group(3)
             return date(int(ano) + (2000 if len(ano) == 2 else 0), mes, dia)
         if m := _DATE_TXT.search(texto):
-            mes = _MESES.get(_plain(m.group(2)))
+            mes = _MESES.get(plain(m.group(2)))
             if mes:
                 return date(int(m.group(3)), mes, int(m.group(1)))
     except ValueError:
@@ -76,7 +77,7 @@ def parse_carencia(texto: str, registro: date) -> date:
 
 
 def parse_periodicidade(texto: str | None) -> Periodicidade | None:
-    t = _plain(texto or "")
+    t = plain(texto or "")
     for prefixo, valor in (
         ("mensa", "MENSAL"), ("trimestral", "TRIMESTRAL"),
         ("semestral", "SEMESTRAL"), ("anual", "ANUAL"),

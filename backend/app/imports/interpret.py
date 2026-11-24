@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -17,6 +16,7 @@ from app.imports.parsing import (
     parse_date,
     parse_money,
     parse_periodicidade,
+    plain,
 )
 from app.imports.schema import RawOffer
 from app.imports.selection import RateAmbiguous, choose_rate
@@ -45,14 +45,9 @@ class Failed:
     parcial: dict
 
 
-def _plain(texto: str | None) -> str:
-    nfd = unicodedata.normalize("NFD", (texto or "").strip())
-    return "".join(c for c in nfd if not unicodedata.combining(c)).lower()
-
-
 def _liquidity(texto: str | None) -> tuple[Liquidity, str | None]:
-    t = re.sub(r"[\s_]+", " ", _plain(texto))
-    if t in ("diaria",):
+    t = re.sub(r"[\s_]+", " ", plain(texto))
+    if t == "diaria":
         return Liquidity.DIARIA, None
     if t == "diaria apos carencia":
         return Liquidity.DIARIA_APOS_CARENCIA, None
@@ -143,9 +138,9 @@ def interpret_offer(
     amortizacao = parse_amortizacao(raw.amortizacao)
     if (raw.codigo or "").strip():
         notas.append(f"Código: {raw.codigo.strip()}")
-    if (raw.juros or "").strip() and (juros or _plain(raw.juros) not in _TRIVIAL):
+    if (raw.juros or "").strip() and (juros or plain(raw.juros) not in _TRIVIAL):
         notas.append(f"Juros: {raw.juros.strip()}")
-    if (raw.amortizacao or "").strip() and (amortizacao or _plain(raw.amortizacao) not in _TRIVIAL):
+    if (raw.amortizacao or "").strip() and (amortizacao or plain(raw.amortizacao) not in _TRIVIAL):
         notas.append(f"Amortização: {raw.amortizacao.strip()}")
 
     if erros:

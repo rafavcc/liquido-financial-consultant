@@ -3,8 +3,6 @@ from datetime import date
 from decimal import Decimal as D
 from pathlib import Path
 
-import pytest
-
 from app.domain.products.base import Indexer, Liquidity, ProductType
 from app.domain.settings import Settings
 from app.imports.interpret import Created, Failed, Ignored, interpret_offer
