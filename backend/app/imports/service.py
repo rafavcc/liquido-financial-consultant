@@ -203,6 +203,11 @@ class ImportService:
                 and found.print_id in batch_print_ids
             ):
                 update["valor_minimo"] = min(found.valor_minimo, data.valor_minimo)
+            elif not minimo_desconhecido and found.valor_minimo == 0 and data.valor_minimo > 0:
+                # 0 é "mínimo desconhecido" (o modelo não leu): preenche quando outro print traz o valor
+                update["valor_minimo"] = data.valor_minimo
+                notas = [n for n in (found.observacoes or "").splitlines() if "Importado: mínimo n" not in n]
+                update["observacoes"] = "\n".join(notas) or None
             self._products.update(found.id, found.model_copy(update=update))
             return "renovado"
 

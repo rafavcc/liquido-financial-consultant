@@ -408,3 +408,28 @@ def test_rejected_llm_fails_with_its_own_message_without_retry(env):
     it = env.items(batch)[0]
     assert it.status == "ERRO" and it.erro == "Servidor LLM recusou a chave (HTTP 401)"
     assert env.llm.calls == 1
+
+
+def test_renewal_fills_a_minimum_that_was_unknown(env):
+    """Um mínimo 0 (desconhecido: o modelo não leu) é preenchido quando outro lote lê o valor, e a nota sai."""
+    from app.imports.interpret import interpret_offer
+    from app.imports.schema import RawOffer, RawRate
+
+    def offer(minimo):
+        return RawOffer(
+            tipo="CDB", emissor="Banco X", taxas=[RawRate(rotulo="Taxa", texto="110% do CDI")],
+            vencimento="23/11/2028", aplicacao_minima=minimo,
+        )
+
+    settings, today = SettingsRepository(env.conn).get(), env.clock.now.date()
+    b1, _ = env.svc.enqueue([shot("btg-app-lci-eq-cdb")])
+    p1 = env.items(b1)[0].print_id
+    unknown = interpret_offer(offer(None), "XP", settings, today)
+    env.svc.upsert_offer(unknown.data.model_copy(update={"print_id": p1}), {p1}, unknown.minimo_desconhecido)
+    assert env.products.list()[0].valor_minimo == 0
+    known = interpret_offer(offer("R$ 1.000,00"), "XP", settings, today)
+    # outro lote, outro print: o mínimo real conhecido não rebaixa nada, só preenche o desconhecido
+    env.svc.upsert_offer(known.data.model_copy(update={"print_id": "outro"}), {"outro"}, known.minimo_desconhecido)
+    (p,) = env.products.list()
+    assert p.valor_minimo == 1000
+    assert "mínimo não visível" not in (p.observacoes or "")
