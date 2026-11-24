@@ -20,6 +20,14 @@ _MESES = {m: i + 1 for i, m in enumerate(
 _DATE_NUM = re.compile(r"(?<![\d/])(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})(?![\d/])")
 _DATE_TXT = re.compile(r"(?<!\d)(\d{1,2})\s+([A-Za-zç]{3})\.?\s+(\d{4})(?!\d)")
 _MONEY = re.compile(r"(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})(?!\d)")
+_BRL = r"(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?(?!\d)"
+_MONEY_BRL = re.compile(r"R\$\s*" + _BRL)
+_MONEY_MIL = re.compile(r"(?:R\$\s*)?" + _BRL + r"\s*(mil|milhao|milhoes|mi)\b")
+_CDI_ANTES = re.compile(r"\bCDI\s*" + _NUM + r"\s*%", re.I)
+# qualquer outro indexador no texto impede o fallback para taxa pré
+_OUTRO_INDEXADOR = re.compile(
+    r"\b(?:cdi|ipca|ipc|igp-?m|igp-?di|igp|selic|di|inpc|tr|poupanca|usd|dolar|dolares)\b"
+)
 _D_MAIS = re.compile(r"\bD\s*\+\s*(\d+)\b", re.I)
 _N_DIAS = re.compile(r"\b(\d+)\s*dias?\b", re.I)
 
@@ -41,6 +49,10 @@ def parse_rate(texto: str) -> tuple[Indexer, Decimal] | None:
         return Indexer.IPCA_MAIS, _fraction(m.group(1))
     if m := _PCT_CDI.search(texto):
         return Indexer.PCT_CDI, _fraction(m.group(1))
+    if m := _CDI_ANTES.search(texto):
+        return Indexer.PCT_CDI, _fraction(m.group(1))
+    if _OUTRO_INDEXADOR.search(plain(texto)):
+        return None
     if m := _PRE.search(texto):
         return Indexer.PRE, _fraction(m.group(1))
     return None
@@ -61,10 +73,14 @@ def parse_date(texto: str) -> date | None:
 
 
 def parse_money(texto: str) -> Decimal | None:
-    m = _MONEY.search(texto)
-    if not m:
-        return None
-    return Decimal(m.group(1).replace(".", "") + "." + m.group(2))
+    if m := _MONEY.search(texto):
+        return Decimal(m.group(1).replace(".", "") + "." + m.group(2))
+    if m := _MONEY_MIL.search(plain(texto)):
+        base = Decimal(m.group(1).replace(".", "") + "." + (m.group(2) or "0"))
+        return base * (1000 if m.group(3) == "mil" else 1_000_000)
+    if m := _MONEY_BRL.search(texto):
+        return Decimal(m.group(1).replace(".", "") + "." + (m.group(2) or "0"))
+    return None
 
 
 def parse_carencia(texto: str, registro: date) -> date:

@@ -38,13 +38,14 @@ _NOME_EMISSOR = re.compile(
     re.IGNORECASE,
 )
 _SUFIXO_MES = re.compile(r"\s*-\s*[A-Za-zÇç]{3}/\d{2,4}\s*$")
-_NOME_GENERICO = {"pos-fixado", "pos fixado", "prefixado", "pre-fixado", "ipca", "inflacao", "hibrido"}
+_NOME_GENERICO = {"pos-fixado", "pos fixado", "prefixado", "pre-fixado", "ipca", "inflacao", "hibrido", "ultravioleta"}
 _TRIVIAL = {"", "-", "—", "–", "no vencimento", "nao ha", "n/a"}
 
 
 @dataclass
 class Created:
     data: ProductData
+    minimo_desconhecido: bool = False  # valor_minimo=0 é só preenchimento: não vale como mínimo real
 
 
 @dataclass
@@ -162,9 +163,13 @@ def interpret_offer(
             erros.append(f"Carência não reconhecida: {raw.carencia}")
 
     minimo = parse_money(raw.aplicacao_minima) if raw.aplicacao_minima else None
+    minimo_desconhecido = minimo is None
     if minimo is None:
         minimo = Decimal(0)
-        notas.append("Importado: mínimo não visível no print")
+        if (raw.aplicacao_minima or "").strip():
+            notas.append(f"Importado: mínimo não reconhecido ({raw.aplicacao_minima.strip()})")
+        else:
+            notas.append("Importado: mínimo não visível no print")
 
     disponivel_ate = None
     if (raw.disponivel_ate or "").strip():
@@ -206,4 +211,4 @@ def interpret_offer(
     if erros:
         parcial["interpretado"] = data.model_dump(mode="json")
         return Failed(erros=erros, parcial=parcial)
-    return Created(data=data)
+    return Created(data=data, minimo_desconhecido=minimo_desconhecido)

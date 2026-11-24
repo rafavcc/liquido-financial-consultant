@@ -352,3 +352,30 @@ def test_platform_from_clues_when_model_unsure(env, monkeypatch):
     env.svc.process_next()
     assert env.items(batch)[0].criados == 1
     assert env.products.list()[0].plataforma == "BTG"
+
+
+def test_unknown_minimum_never_lowers_existing_minimum(env):
+    from app.imports.interpret import interpret_offer
+    from app.imports.schema import RawOffer, RawRate
+
+    def offer(minimo):
+        return RawOffer(
+            tipo="CDB", emissor="Banco X", taxas=[RawRate(rotulo="Taxa", texto="110% do CDI")],
+            vencimento="23/11/2028", aplicacao_minima=minimo,
+        )
+
+    settings, today = SettingsRepository(env.conn).get(), env.clock.now.date()
+    batch, _ = env.svc.enqueue([shot("btg-app-lci-eq-cdb")])
+    pid = env.items(batch)[0].print_id
+    first = interpret_offer(offer("R$ 1.000"), "XP", settings, today)
+    assert first.data.valor_minimo == 1000
+    env.svc.upsert_offer(first.data.model_copy(update={"print_id": pid}), {pid}, first.minimo_desconhecido)
+    unknown = interpret_offer(offer("???"), "XP", settings, today)
+    assert unknown.minimo_desconhecido
+    assert env.svc.upsert_offer(
+        unknown.data.model_copy(update={"print_id": pid}), {pid}, unknown.minimo_desconhecido) == "renovado"
+    (p,) = env.products.list()
+    assert p.valor_minimo == 1000
+    lower = interpret_offer(offer("R$ 500"), "XP", settings, today)
+    env.svc.upsert_offer(lower.data.model_copy(update={"print_id": pid}), {pid}, lower.minimo_desconhecido)
+    assert env.products.list()[0].valor_minimo == 500

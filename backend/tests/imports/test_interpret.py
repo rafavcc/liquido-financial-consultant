@@ -220,3 +220,19 @@ def test_issuer_loses_glued_maturity_suffix():
     for bruto, limpo in (("ASA SCFI - SET/2029", "ASA SCFI"), ("FIBRA - ABR/2032", "FIBRA"), ("BRF", "BRF")):
         r = interpret_offer(raw_ok(emissor=bruto), "XP", Settings(), T)
         assert r.data.emissor == limpo
+
+
+def test_unrecognized_minimum_says_so_and_is_flagged_unknown():
+    r = interpret_offer(raw_ok(aplicacao_minima="consulte"), "XP", Settings(), T)
+    assert r.data.valor_minimo == 0 and r.minimo_desconhecido is True
+    assert "mínimo não reconhecido (consulte)" in r.data.observacoes
+    assert "mínimo não visível" not in r.data.observacoes
+    r = interpret_offer(raw_ok(aplicacao_minima=None), "XP", Settings(), T)
+    assert r.minimo_desconhecido is True and "mínimo não visível no print" in r.data.observacoes
+    r = interpret_offer(raw_ok(aplicacao_minima="R$ 250 mil"), "XP", Settings(), T)
+    assert r.minimo_desconhecido is False and r.data.valor_minimo == D("250000")
+
+
+def test_ultravioleta_title_is_not_an_issuer():
+    r = interpret_offer(raw_ok(emissor=None, nome_exibido="CDB Ultravioleta"), "Nubank", Settings(), T)
+    assert isinstance(r, Failed) and "Emissor não visível" in r.erros

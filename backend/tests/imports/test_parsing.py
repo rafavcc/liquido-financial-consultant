@@ -81,3 +81,25 @@ def test_parse_amortizacao():
     assert parse_amortizacao("No Vencimento") is None
     assert parse_amortizacao("-") is None
     assert parse_amortizacao(None) is None
+
+
+def test_parse_money_without_cents_and_mil():
+    assert parse_money("R$ 1.000") == D("1000")
+    assert parse_money("R$ 250.000") == D("250000")
+    assert parse_money("R$ 5.000.000") == D("5000000")
+    assert parse_money("R$ 100") == D("100")
+    assert parse_money("R$ 1.000,5") == D("1000.5")
+    assert parse_money("R$ 250 mil") == D("250000")
+    assert parse_money("1,5 mil") == D("1500")
+    assert parse_money("R$ 1 milhão") == D("1000000")
+    assert parse_money("R$ 2 mi") == D("2000000")
+    assert parse_money("sem valor") is None
+    assert parse_money("5 dias") is None
+
+
+def test_parse_rate_other_indexes_are_never_pre():
+    for t in ("IGP-M + 5%", "IGPM + 5,5%", "IGP-DI + 4%", "Selic + 0,10%", "100% da Selic",
+              "DI + 2%", "INPC + 6%", "TR + 8%", "Poupança 70%", "USD + 5%", "Dólar + 4%", "IPCA 5%"):
+        assert parse_rate(t) is None, t
+    assert parse_rate("CDI 105%") == (I.PCT_CDI, D("1.05"))
+    assert parse_rate("12% a.a.") == (I.PRE, D("0.12"))

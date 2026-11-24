@@ -165,7 +165,7 @@ class ImportService:
             res = interpret_offer(raw, plataforma, settings, today)
             if isinstance(res, Created):
                 data = res.data.model_copy(update={"print_id": item.print_id})
-                counts["criados" if self.upsert_offer(data, batch_prints) == "criado" else "renovados"] += 1
+                counts["criados" if self.upsert_offer(data, batch_prints, res.minimo_desconhecido) == "criado" else "renovados"] += 1
             elif isinstance(res, Failed):
                 self._repo.add_failure(item.id, res.parcial, res.erros)
                 counts["falhas"] += 1
@@ -182,7 +182,9 @@ class ImportService:
 
     # --- produtos ----------------------------------------------------------------------------
 
-    def upsert_offer(self, data: ProductData, batch_print_ids: set[str]) -> Literal["criado", "renovado"]:
+    def upsert_offer(
+        self, data: ProductData, batch_print_ids: set[str], minimo_desconhecido: bool = False
+    ) -> Literal["criado", "renovado"]:
         with self._lock:
             key = offer_key(data)
             found = next((p for p in self._products.list() if not p.exemplo and offer_key(p) == key), None)
@@ -192,7 +194,11 @@ class ImportService:
             update: dict = {"data_registro": self._today(), "print_id": data.print_id}
             if data.disponivel_ate is not None:
                 update["disponivel_ate"] = data.disponivel_ate
-            if found.print_id is not None and found.print_id in batch_print_ids:
+            if (
+                not minimo_desconhecido
+                and found.print_id is not None
+                and found.print_id in batch_print_ids
+            ):
                 update["valor_minimo"] = min(found.valor_minimo, data.valor_minimo)
             self._products.update(found.id, found.model_copy(update=update))
             return "renovado"
