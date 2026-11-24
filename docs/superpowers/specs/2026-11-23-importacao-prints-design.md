@@ -251,6 +251,28 @@ Conteúdo obrigatório:
 - Tipo TESOURO → ignorado sem falha (contado como "ignorado" no item).
 - `nome`: `nome_exibido` se houver; senão "{tipo} {emissor}".
 
+### 6.5 Ajustes da calibração com o modelo real (2026-11-24, Qwen3.5-9B, 16 prints)
+Decididos pelo orquestrador ao rodar a avaliação (43% → 96% dos campos) e a importação real; substituem
+o que conflitar acima.
+- **Indícios de plataforma**: o esquema ganha `indicios` (lista de textos que identificam a plataforma),
+  pedido **antes** de `plataforma`. Se o modelo responder DESCONHECIDA, o código escolhe a plataforma
+  cujas pistas fixas aparecem nos indícios — só quando **uma única** bate; senão continua falha.
+- **Emissor pelo nome**: sem emissor, o código tira do `nome_exibido` no padrão "TIPO EMISSOR - MMM/AAAA"
+  ("LCA BANCO ORIGINAL - ABR/2030", "CRA - ARMAC"), com nota "emissor tirado do nome"; nomes genéricos
+  ("LCI - Pós-fixado", "CDB Ultravioleta") não contam e a falha "Emissor não visível" continua. O emissor
+  perde um sufixo de mês colado ("ASA SCFI - SET/2029" → "ASA SCFI"), que duplicava ofertas.
+- **Cortada**: só é ignorada se faltar a taxa ou o vencimento; o 9B marca como cortada linha com nome
+  abreviado ("CDB BTG PACTUAL - ABR/203...") mesmo com tudo legível.
+- **Taxa eq. CDB em CDB**: num tipo tributado o "equivalente CDB" é a própria taxa (não é descartado); um
+  número solto igual a uma taxa com indexador ("103,75%" ao lado de "103,75% do CDI") é a mesma taxa sem o
+  indexador e é descartado com nota.
+- **"IPC + 12,04%"** (como o 9B lê o "IPCA +" do BTG) → IPCA_MAIS. Texto com outro índice (IGP-M, Selic,
+  INPC, TR, dólar) nunca vira PRE: é descartado.
+- **Liquidez diária em LCI/LCA/LCD** (o modelo inventa) → NO_VENCIMENTO com nota. Carência "-" → sem carência.
+- **Mínimo**: aceita valores sem centavos ("R$ 250.000") e "mil"; mínimo visível mas não reconhecido gera
+  nota própria; mínimo desconhecido (0) nunca rebaixa um mínimo real na renovação.
+- **Worker** só sobe com LLM configurado: outra instância sem LLM no mesmo banco não toca a fila.
+
 ## 7. Modelo de dados
 
 ### 7.1 Novos campos em `ProductData` (todos opcionais, compatíveis com o JSON já gravado)
