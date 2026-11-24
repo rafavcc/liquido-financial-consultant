@@ -100,10 +100,10 @@ export function prazoSaidaLabel(r: SimulationResult, hoje: string): string | nul
     return n === 0 ? diaria : `D+${n}`;
   }
   if (p.tipo === "TESOURO_SELIC") return diaria;
-  if (p.tipo.startsWith("TESOURO_")) return `Venda antes de ${formatDate(p.data_vencimento)} a preço de mercado`;
+  if (p.tipo.startsWith("TESOURO_")) return p.data_vencimento === null ? null : `Venda antes de ${formatDate(p.data_vencimento)} a preço de mercado`;
   if (p.liquidez === "DIARIA") return diaria;
   if (p.liquidez === "DIARIA_APOS_CARENCIA") {
     return p.data_carencia !== null && p.data_carencia > hoje ? `Carência até ${formatDate(p.data_carencia)}` : diaria;
   }
-  return `Preso até ${formatDate(p.data_vencimento)}`;
+  return p.data_vencimento === null ? null : `Preso até ${formatDate(p.data_vencimento)}`;
 }

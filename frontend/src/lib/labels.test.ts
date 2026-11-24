@@ -36,3 +36,8 @@ test("ORDENACOES e HORIZONTES", () => {
   expect(ORDENACOES.map((o) => o.label)).toEqual(["Valor líquido", "Taxa líquida a.a.", "Custo-benefício", "Menor prazo de saída", "Segurança"]);
   expect(HORIZONTES.map((h) => h.label)).toEqual(["Sem data", "1 ano", "2 anos", "Escolher data"]);
 });
+
+test("prazoSaidaLabel sem data_vencimento retorna null", () => {
+  expect(prazoSaidaLabel(res({ liquidez: "NO_VENCIMENTO", data_vencimento: null }), "2026-11-19")).toBeNull();
+  expect(prazoSaidaLabel(res({ tipo: "TESOURO_IPCA", data_vencimento: null }), "2026-11-19")).toBeNull();
+});

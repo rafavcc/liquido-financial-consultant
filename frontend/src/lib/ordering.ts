@@ -65,7 +65,7 @@ export function ordenar(list: SimulationResult[], ord: Ordenacao): SimulationRes
       break;
     case "CUSTO_BENEFICIO": {
       const dom = dominados(resgataveis);
-      const grupo = (r: SimulationResult) => (dom.has(r.product.id) ? 1 : 0);
+      const grupo = (r: SimulationResult) => (!comparavel(r) ? 2 : dom.has(r.product.id) ? 1 : 0);
       cmp = chain(
         (a, b) => grupo(a) - grupo(b),
         (a, b) => (grupo(a) === 0 ? chain(prazoAsc, taxaDesc)(a, b) : taxaDesc(a, b)),

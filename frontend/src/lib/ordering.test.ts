@@ -64,3 +64,11 @@ test("valor líquido desc, depois taxa desc, depois nome", () => {
 
 test("não muta a entrada", () => { const l = [r("b", { taxa: "0.1", prazo: 1 }), r("a", { taxa: "0.2", prazo: 1 })];
   const copia = [...l]; ordenar(l, "TAXA"); expect(l).toEqual(copia); });
+
+test("custo-benefício: nulos vão para o fim do bloco resgatável", () => {
+  const ok = r("ok", { taxa: "0.12", prazo: 365 }), semTaxa = r("semTaxa", { taxa: null, prazo: 0 });
+  expect(ordenar([semTaxa, ok], "CUSTO_BENEFICIO").map((x) => x.product.id)).toEqual(["ok", "semTaxa"]);
+  const a = r("A", { taxa: "0.128", prazo: 730 }), nulo = r("nulo", { taxa: "0.10", prazo: null });
+  const b = r("B", { taxa: "0.125", prazo: 1460 });
+  expect(ordenar([a, nulo, b], "CUSTO_BENEFICIO").map((x) => x.product.id)).toEqual(["A", "B", "nulo"]);
+});
