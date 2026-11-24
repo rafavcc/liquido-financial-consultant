@@ -1,4 +1,4 @@
-import type { MarketSummary, ProductData, Settings, SimulationResponse } from "./types";
+import type { ImportBatchView, ImportCreated, ImportFailureView, ImportItemView, ImportStatus, MarketSummary, ProductData, Settings, SimulationResponse } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, public messages: string[]) {
@@ -17,8 +17,9 @@ async function request<T>(
   try {
     res = await fetch(`/api${path}`, {
       method,
-      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      // FormData: o navegador define o Content-Type (multipart + boundary).
+      headers: body !== undefined && !(body instanceof FormData) ? { "Content-Type": "application/json" } : undefined,
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
       signal,
     });
   } catch (e) {
@@ -41,6 +42,8 @@ async function request<T>(
   return (await res.json()) as T;
 }
 
+export const printUrl = (id: string) => `/api/prints/${id}`;
+
 export const api = {
   simulate: (valor: string, dataAlvo: string, signal?: AbortSignal) =>
     request<SimulationResponse>("POST", "/simulate", { valor, data_alvo: dataAlvo }, signal),
@@ -58,5 +61,19 @@ export const api = {
     get: () => request<Settings>("GET", "/settings"),
     update: (s: Settings) => request<Settings>("PUT", "/settings", s),
     reset: () => request<Settings>("POST", "/settings/reset"),
+  },
+  imports: {
+    status: () => request<ImportStatus>("GET", "/imports/status"),
+    upload: (files: File[]) => {
+      const form = new FormData();
+      files.forEach((f) => form.append("arquivos", f));
+      return request<ImportCreated>("POST", "/imports", form);
+    },
+    list: () => request<ImportBatchView[]>("GET", "/imports"),
+    get: (id: string) => request<ImportBatchView>("GET", `/imports/${id}`),
+    retry: (itemId: string) => request<ImportItemView>("POST", `/imports/items/${itemId}/retry`),
+    failures: (status = "ABERTA") => request<ImportFailureView[]>("GET", `/imports/failures?status=${status}`),
+    resolve: (id: string, p: Partial<ProductData>) => request<ProductData>("POST", `/imports/failures/${id}/resolve`, p),
+    discard: (id: string) => request<void>("POST", `/imports/failures/${id}/discard`),
   },
 };

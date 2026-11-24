@@ -123,3 +123,45 @@ export interface Settings {
   prazo_min_meses_lca_ipca: number;
   prazo_min_meses_lcd: number;
 }
+
+export interface ImportStatus {
+  configurado: boolean;
+  alcancavel: boolean | null;
+  modelo: string | null;
+}
+
+export type ImportItemStatus = "NA_FILA" | "LENDO" | "CONCLUIDO" | "ERRO";
+
+export interface ImportItemView {
+  id: string;
+  nome_arquivo: string;
+  print_id: string;
+  status: ImportItemStatus;
+  erro: string | null;
+  criados: number;
+  renovados: number;
+  ignorados: number;
+  falhas: number;
+}
+
+export interface ImportBatchView {
+  id: string;
+  criado_em: string;
+  pendentes: number;
+  itens: ImportItemView[];
+}
+
+export interface ImportCreated {
+  lote: ImportBatchView;
+  recusados: string[];
+}
+
+export interface ImportFailureView {
+  id: string;
+  item_id: string;
+  print_id: string | null;
+  nome_arquivo: string | null;
+  erros: string[];
+  parcial: Record<string, unknown>;
+  status: string;
+}

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useTheme, type Tema } from "../lib/theme";
-import { IconBox, IconCompare, IconGear, IconMonitor, IconMoon, IconSun, IconTrend } from "./Icons";
+import { IconBox, IconCompare, IconGear, IconImport, IconMonitor, IconMoon, IconSun, IconTrend } from "./Icons";
 
 const NAV = [
   { to: "/", label: "Comparador", icon: <IconCompare />, end: true },
   { to: "/produtos", label: "Produtos", icon: <IconBox />, end: false },
+  { to: "/importar", label: "Importar", icon: <IconImport />, end: false },
   { to: "/configuracoes", label: "Configurações", icon: <IconGear />, end: false },
   { to: "/mercado", label: "Mercado", icon: <IconTrend />, end: false },
 ];
@@ -77,7 +78,7 @@ export function Layout({ children }: { children: ReactNode }) {
         aria-label="Principal"
         className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
       >
-        <ul className="grid grid-cols-4">
+        <ul className="grid grid-cols-5">
           {NAV.map((n) => (
             <li key={n.to}>
               <NavLink

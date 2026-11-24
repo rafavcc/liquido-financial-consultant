@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Comparador } from "./pages/Comparador";
 import { Configuracoes } from "./pages/Configuracoes";
+import { Importar } from "./pages/Importar";
 import { Produtos } from "./pages/Produtos";
 
 const Mercado = lazy(() => import("./pages/Mercado").then((m) => ({ default: m.Mercado })));
@@ -21,6 +22,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Comparador />} />
           <Route path="/produtos" element={<Produtos />} />
+          <Route path="/importar" element={<Importar />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/mercado" element={<Mercado />} />
           <Route path="*" element={<Soon title="Página não encontrada" />} />
