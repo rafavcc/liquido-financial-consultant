@@ -7,6 +7,23 @@ CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS market_cache (
     source TEXT PRIMARY KEY, payload TEXT, fetched_at TEXT, error TEXT, failed_at TEXT
 );
+CREATE TABLE IF NOT EXISTS prints (
+    id TEXT PRIMARY KEY, sha256 TEXT NOT NULL UNIQUE, mime TEXT NOT NULL, caminho TEXT NOT NULL,
+    criado_em TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS import_batches (id TEXT PRIMARY KEY, criado_em TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS import_items (
+    id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, print_id TEXT NOT NULL, nome_arquivo TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'NA_FILA', tentativas INTEGER NOT NULL DEFAULT 0,
+    proxima_tentativa TEXT, erro TEXT, resposta_bruta TEXT,
+    criados INTEGER NOT NULL DEFAULT 0, renovados INTEGER NOT NULL DEFAULT 0,
+    ignorados INTEGER NOT NULL DEFAULT 0, falhas INTEGER NOT NULL DEFAULT 0,
+    iniciado_em TEXT, concluido_em TEXT, seq INTEGER
+);
+CREATE TABLE IF NOT EXISTS import_failures (
+    id TEXT PRIMARY KEY, item_id TEXT NOT NULL, dados_parciais TEXT NOT NULL, erros TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ABERTA'
+);
 """
 
 

@@ -1,0 +1,206 @@
+"""Serviço de importação: fila, interpretação, renovação e falhas (spec §5, §7.3)."""
+
+from __future__ import annotations
+
+import logging
+import threading
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from typing import Literal
+
+from app.data.imports_repo import ImportItem, ImportRepository, PrintStore
+from app.data.repositories import ProductRepository, SettingsRepository
+from app.domain.offers import offer_key
+from app.domain.products.base import ProductData
+from app.domain.products.validation import validate_product
+from app.imports.interpret import Created, Failed, Ignored, interpret_offer
+from app.imports.llm import LlmBadResponse, LlmClient, LlmUnavailable
+
+log = logging.getLogger(__name__)
+
+MAX_BYTES = 20 * 1024 * 1024
+MAX_ATTEMPTS = 3
+_FORMATO = "{nome}: formato não suportado (use PNG, JPEG ou WEBP)"
+
+
+@dataclass
+class UploadedFile:
+    nome: str
+    content: bytes
+
+
+def detect_mime(content: bytes) -> str | None:
+    if content.startswith(b"\x89PNG"):
+        return "image/png"
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+class ImportService:
+    def __init__(
+        self,
+        products: ProductRepository,
+        settings: SettingsRepository,
+        repo: ImportRepository,
+        prints: PrintStore,
+        llm: LlmClient | None,
+        lock: threading.RLock,
+        today_fn: Callable[[], date],
+        now_fn: Callable[[], datetime],
+        retry_waits_s: tuple[int, int] = (5, 30),
+    ) -> None:
+        self._products, self._settings, self._repo, self._prints = products, settings, repo, prints
+        self._llm, self._lock = llm, lock
+        self._today, self._now = today_fn, now_fn
+        self._waits = retry_waits_s
+
+    # --- entrada -----------------------------------------------------------------------------
+
+    def enqueue(self, files: list[UploadedFile]) -> tuple[str, list[str]]:
+        recusas: list[str] = []
+        ok: list[tuple[UploadedFile, str]] = []
+        for f in files:
+            mime = detect_mime(f.content)
+            if mime is None:
+                recusas.append(_FORMATO.format(nome=f.nome))
+            elif len(f.content) > MAX_BYTES:
+                recusas.append(f"{f.nome}: maior que 20 MB")
+            else:
+                ok.append((f, mime))
+        if not ok:
+            raise ValueError(recusas)
+        with self._lock:
+            batch = self._repo.create_batch()
+            for f, mime in ok:
+                self._repo.add_item(batch, self._prints.save(f.content, mime), f.nome)
+        return batch, recusas
+
+    def requeue_reading(self) -> int:
+        with self._lock:
+            return self._repo.requeue_reading()
+
+    def retry_item(self, item_id: str) -> None:
+        with self._lock:
+            self._repo.set_status(
+                item_id, "NA_FILA", tentativas=0, proxima_tentativa=None, erro=None, concluido_em=None
+            )
+
+    # --- processamento -----------------------------------------------------------------------
+
+    def process_next(self) -> bool:
+        with self._lock:
+            item = self._repo.next_ready(self._now())
+            if item is None:
+                return False
+            self._repo.set_status(item.id, "LENDO", iniciado_em=self._now().isoformat(), erro=None)
+        try:
+            self._process(item)
+        except Exception as exc:  # o item nunca fica LENDO
+            log.exception("Falha inesperada ao importar %s", item.id)
+            self._fail(item, str(exc) or exc.__class__.__name__)
+        return True
+
+    def _fail(self, item: ImportItem, erro: str, **fields) -> None:
+        with self._lock:
+            self._repo.set_status(item.id, "ERRO", erro=erro, concluido_em=self._now().isoformat(), **fields)
+
+    def _process(self, item: ImportItem) -> None:
+        if self._llm is None:
+            return self._fail(item, "Importação não configurada")
+        with self._lock:
+            found = self._prints.path(item.print_id)
+        if found is None:
+            return self._fail(item, "Print não encontrado")
+        path, mime = found
+        try:
+            extraction = self._llm.extract(path.read_bytes(), mime)  # fora do lock
+        except LlmUnavailable as exc:
+            return self._unavailable(item, str(exc))
+        except LlmBadResponse:
+            return self._fail(item, "Resposta do modelo ilegível")
+        with self._lock:
+            self._apply(item, extraction)
+
+    def _unavailable(self, item: ImportItem, detalhe: str) -> None:
+        tentativas = item.tentativas + 1
+        if tentativas >= MAX_ATTEMPTS:
+            return self._fail(item, f"Servidor LLM indisponível: {detalhe}", tentativas=tentativas)
+        espera = self._waits[tentativas - 1]
+        with self._lock:
+            self._repo.set_status(
+                item.id,
+                "NA_FILA",
+                tentativas=tentativas,
+                proxima_tentativa=(self._now() + timedelta(seconds=espera)).isoformat(),
+                erro=f"Servidor LLM indisponível: {detalhe}",
+            )
+
+    def _apply(self, item: ImportItem, extraction) -> None:
+        settings, today = self._settings.get(), self._today()
+        batch = self._repo.get_batch(item.batch_id)
+        batch_prints = {i.print_id for i in batch.itens} if batch else {item.print_id}
+        counts = {"criados": 0, "renovados": 0, "ignorados": 0, "falhas": 0}
+        for raw in extraction.ofertas:
+            res = interpret_offer(raw, extraction.plataforma, settings, today)
+            if isinstance(res, Created):
+                data = res.data.model_copy(update={"print_id": item.print_id})
+                counts["criados" if self.upsert_offer(data, batch_prints) == "criado" else "renovados"] += 1
+            elif isinstance(res, Failed):
+                self._repo.add_failure(item.id, res.parcial, res.erros)
+                counts["falhas"] += 1
+            elif isinstance(res, Ignored):
+                counts["ignorados"] += 1
+        self._repo.set_status(
+            item.id,
+            "CONCLUIDO",
+            resposta_bruta=extraction.model_dump_json(),
+            concluido_em=self._now().isoformat(),
+            proxima_tentativa=None,
+            **counts,
+        )
+
+    # --- produtos ----------------------------------------------------------------------------
+
+    def upsert_offer(self, data: ProductData, batch_print_ids: set[str]) -> Literal["criado", "renovado"]:
+        with self._lock:
+            key = offer_key(data)
+            found = next((p for p in self._products.list() if not p.exemplo and offer_key(p) == key), None)
+            if found is None:
+                self._products.create(data)
+                return "criado"
+            update: dict = {"data_registro": self._today(), "print_id": data.print_id}
+            if data.disponivel_ate is not None:
+                update["disponivel_ate"] = data.disponivel_ate
+            if found.print_id is not None and found.print_id in batch_print_ids:
+                update["valor_minimo"] = min(found.valor_minimo, data.valor_minimo)
+            self._products.update(found.id, found.model_copy(update=update))
+            return "renovado"
+
+    # --- falhas ------------------------------------------------------------------------------
+
+    def resolve_failure(self, failure_id: str, data: ProductData) -> ProductData:
+        with self._lock:
+            failure = self._repo.get_failure(failure_id)
+            if failure is None:
+                raise KeyError(failure_id)
+            today = self._today()
+            erros = validate_product(data, self._settings.get(), today)
+            if erros:
+                raise ValueError(erros)
+            data = data.model_copy(
+                update={"origem": "IA", "print_id": failure.print_id, "data_registro": today}
+            )
+            item = self._repo.get_item(failure.item_id)
+            batch = self._repo.get_batch(item.batch_id) if item else None
+            batch_prints = {i.print_id for i in batch.itens} if batch else set()
+            self.upsert_offer(data, batch_prints)
+            self._repo.set_failure_status(failure_id, "RESOLVIDA")
+            return data
+
+    def discard_failure(self, failure_id: str) -> None:
+        with self._lock:
+            self._repo.set_failure_status(failure_id, "DESCARTADA")
