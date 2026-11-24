@@ -82,3 +82,9 @@ def test_settings_alert_error_carries_field_and_text():
     assert validation_messages(exc.value) == [
         "oferta_alerta_dias: o alerta de oferta antiga deve vir antes da expiração"
     ]
+
+
+def test_settings_alert_default_checked_against_expiry():
+    with pytest.raises(ValueError):
+        Settings(oferta_expira_dias=10)
+    assert Settings(oferta_expira_dias=15).oferta_alerta_dias == 14

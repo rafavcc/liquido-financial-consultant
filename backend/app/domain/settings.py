@@ -60,9 +60,10 @@ class Settings(BaseModel):
     prazo_min_meses_lca: int = 6
     prazo_min_meses_lca_ipca: int = 12
     prazo_min_meses_lcd: int = 12
-    # expira antes de alerta: o validador de alerta precisa ver a expiração já validada.
+    # A ordem importa: oferta_expira_dias vem antes para o validador de oferta_alerta_dias enxergá-la.
+    # validate_default=True faz o validador rodar também quando o alerta é omitido (padrão 14).
     oferta_expira_dias: int = 28
-    oferta_alerta_dias: int = 14
+    oferta_alerta_dias: int = Field(14, validate_default=True)
 
     @field_validator("oferta_alerta_dias")
     @classmethod
