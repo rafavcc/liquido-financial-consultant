@@ -23,6 +23,18 @@ vitest, Playwright) + `python-multipart` (upload). Sem Pillow.
 **Spec:** `docs/superpowers/specs/2026-11-23-importacao-prints-design.md` (e, para o resto do sistema,
 `docs/superpowers/specs/2026-11-19-comparador-renda-fixa-design.md`).
 
+## Resultado do spike com o modelo real (2026-11-23)
+
+- Modelo: **`unsloth/Qwen3.5-9B-GGUF`** com `mmproj-BF16` (cabe inteiro na VRAM de 16 GB). **Não usar o
+  Qwen3.8-27B**: não cabe na VRAM, transborda para a RAM e esgotou a memória comprometida do Windows
+  (derrubou o WSL). O servidor tem auto-switch ligado e carrega um modelo por vez.
+- Visão OK; `response_format` `json_schema` é honrado (enum respeitado); `enable_thinking: false` aceito.
+- Tempo: 12 s (app BTG, 2 ofertas, incluindo carga) e 51 s (tabela XP densa, 9 ofertas).
+- **O modelo troca `texto` e `rotulo`** e despeja células que não são taxa em `taxas`. Por isso: no
+  esquema, `rotulo` vem **antes** de `texto`, ambos com `description`; e a escolha da taxa aceita o valor
+  em qualquer dos dois campos (Task 5).
+- Plataforma acertada com notas mínimas (BTG, XP).
+
 ## Global Constraints
 
 - Regras inegociáveis do `CLAUDE.md`: `Decimal` sempre; taxas como fração; % convertido só na borda
@@ -33,6 +45,8 @@ vitest, Playwright) + `python-multipart` (upload). Sem Pillow.
 - Configuração do LLM só por ambiente: `LLM_BASE_URL`, `CASA_LLM_MODEL`, `LLM_API_KEY` (opcional),
   `LLM_TIMEOUT_S` (padrão `300`). Ausência de `LLM_BASE_URL` ou `CASA_LLM_MODEL` ⇒ importação "não
   configurada". **O token nunca aparece em código, teste, fixture ou commit.**
+- Modelo: `CASA_LLM_MODEL=unsloth/Qwen3.5-9B-GGUF` (nunca o 27B). Sem modelo carregado o servidor responde
+  400 "No model loaded" (tratado como `LlmUnavailable`).
 - Variáveis de teste/e2e: `LIQUIDO_LLM_FIXTURES=<dir>` usa o cliente falso; `LIQUIDO_IMPORT_WORKER=0`
   não inicia a thread.
 - Prazos mínimos (padrões em `Settings`): LCI 6 meses; LCI IPCA+ 36; LCA 6; LCA IPCA+ 12; LCD 12.
@@ -276,7 +290,8 @@ Commit `test(importacao): respostas transcritas dos prints e prompt do sistema`.
 **Interfaces:**
 - Consumes: Task 1 (`LCD`, `validate_product`), Task 3 (campos de oferta, `Periodicidade`, `Amortizacao`), Task 4 (fixtures).
 - `schema.py` (pydantic):
-  - `RawRate`: `texto: str`, `rotulo: str = ""`
+  - `RawRate`: `rotulo: str = ""` (description "rótulo ou cabeçalho da coluna, ex.: Taxa, Taxa eq. CDB"),
+    `texto: str` (description "o valor como aparece, ex.: 90,00% do CDI") — **nesta ordem**
   - `RawOffer`: `tipo: str`, `emissor: str | None = None`, `nome_exibido: str | None = None`,
     `taxas: list[RawRate] = []`, `vencimento: str | None = None`, `aplicacao_minima: str | None = None`,
     `liquidez: str | None = None`, `carencia: str | None = None`, `disponivel_ate: str | None = None`,
@@ -300,7 +315,9 @@ Commit `test(importacao): respostas transcritas dos prints e prompt do sistema`.
   - `@dataclass RateChoice`: `indexador`, `taxa`, `ignoradas: list[str]` (cada uma `"111,76% do CDI (Equivalente CDB)"`)
   - `@dataclass RateAmbiguous`: `textos: list[str]`
   - `choose_rate(taxas: list[RawRate], tipo: ProductType, vencimento: date | None, settings: Settings, today: date) -> RateChoice | RateAmbiguous`
-    — passos da spec §6.4: exclui por rótulo; descarta não interpretáveis; colapsa iguais; se tipo em
+    — passos da spec §6.4: considera só entradas em que `texto` **ou** `rotulo` contém `%` e é
+    interpretável por `parse_rate` (o valor pode estar em qualquer um dos dois — o modelo troca); o outro
+    campo é o rótulo; exclui pelo regex aplicado aos dois campos; descarta não interpretáveis; colapsa iguais; se tipo em
     `settings.ir_exempt_types` e sobram duas do mesmo indexador com `maior ≈ menor/(1−aliquota(dias até
     o vencimento))` (tolerância relativa 3%) descarta a maior; exatamente uma ⇒ `RateChoice`.
 - `interpret.py`:
@@ -348,6 +365,11 @@ def test_gross_up_without_label():
 def test_strikethrough_and_ir_discarded():
     c = choose_rate([RawRate(texto="107% do CDI", rotulo="riscada"), RawRate(texto="108% do CDI", rotulo=""), RawRate(texto="15%", rotulo="IR")], CDB, date(2028,11,18), Settings(), T)
     assert c.taxa == D("1.08")
+def test_swapped_fields_and_junk_cells():   # comportamento real do Qwen3.5-9B
+    taxas = [RawRate(rotulo="90,00% do CDI", texto="Taxa"), RawRate(rotulo="108,46% do CDI", texto="Taxa eq. CDB"),
+             RawRate(rotulo="R$ 500,00", texto="Aplicação mínima"), RawRate(texto="22/11/2028", rotulo="Vencimento"),
+             RawRate(texto="2", rotulo="Risco")]
+    assert choose_rate(taxas, LCI, date(2027,11,23), Settings(), T).taxa == D("0.9")
 def test_two_unrelated_rates_are_ambiguous():
     assert isinstance(choose_rate([RawRate(texto="95% do CDI"), RawRate(texto="99% do CDI")], CDB, date(2028,1,3), Settings(), T), RateAmbiguous)
 

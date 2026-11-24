@@ -66,14 +66,19 @@ vinculado ao produto) e com regras determinísticas onde o erro mais provável m
 - Servidor LLM: Unsloth Studio, OpenAI-compatível, na rede local. Configuração **por variável de
   ambiente** (é infraestrutura, não parâmetro financeiro — por isso não vai para `Settings`):
   - `LLM_BASE_URL` — ex.: `http://192.168.0.33:8889/v1`
-  - `CASA_LLM_MODEL` — ex.: `unsloth/Qwen3.5-9B-GGUF`
+  - `CASA_LLM_MODEL` — `unsloth/Qwen3.5-9B-GGUF`, com o projetor de visão `mmproj-BF16` (cabe inteiro
+    nos 16 GB de VRAM). **Não usar o `Qwen3.8-27B`**: não cabe na VRAM, transborda para a RAM e, em
+    2026-11-23, esgotou a memória comprometida do Windows e derrubou o WSL.
   - `LLM_API_KEY` — token Bearer. Nunca commitado; vai no `EnvironmentFile` do systemd.
   - Sem essas variáveis, a página Importar mostra "importação não configurada" e a API recusa uploads (503).
-- Em 2026-11-23 o servidor responde em `/v1/models`; o modelo está instalado mas **descarregado** (o
-  primeiro pedido o carrega — pode demorar). **Ainda não verificado**: se o GGUF foi carregado com o
-  projetor de visão (mmproj) e se o servidor honra `response_format` com JSON Schema. A primeira tarefa
-  do plano verifica as duas coisas com uma chamada real (ver §10).
-- Tempo esperado: dezenas de segundos por print num 9B. Um lote de 30 prints pode levar 15+ minutos.
+- **Verificado em 2026-11-23** (chamadas reais): o Unsloth Studio precisa de "Model auto-switch" ligado
+  (ligado com autorização do usuário; o servidor carrega um modelo por vez) — sem modelo carregado
+  responde 400 "No model loaded". O `Qwen3.5-9B` lê imagens, **honra `response_format` json_schema**
+  (inclusive `enum`) e aceita `enable_thinking=false`. Acertou plataforma, taxas, datas e mínimos num print
+  do app BTG e nas 9 linhas de uma tabela densa da XP. Mas **troca `texto` e `rotulo`** das taxas e põe
+  células que não são taxa na lista — o código tolera as duas coisas (ver plano, Task 5).
+- Tempo medido: ~12 s por print de celular (incluindo carga do modelo) e ~51 s por tabela densa. Um lote
+  de 30 prints leva da ordem de 10–25 min — reforça o processamento em segundo plano.
 - Testes automatizados nunca chamam o LLM: cliente falso com respostas gravadas em `backend/tests/fixtures/`.
 
 ## 4. Abordagens consideradas
@@ -347,7 +352,7 @@ sozinha).
 
 - **Tarefa 1 do plano (spike):** chamada real ao servidor com um print — confirma visão, saída
   estruturada, desligamento do raciocínio e tempo por print. Resultado registrado no plano. Se o modelo
-  não enxergar imagens, **parar e perguntar** (há outros modelos instalados: Qwen3.8-27B, gemma-4-12b).
+  não enxergar imagens, **parar e perguntar**.
 - **Conjunto de calibração**: prints reais em `backend/calibration/prints/` — **só na máquina local,
   ignorado pelo git** (decisão do usuário). Ao lado de cada print, um `<nome>.esperado.json` escrito à
   mão (também local). Um script manual (`uv run python -m app.imports.eval`) roda o modelo real contra
