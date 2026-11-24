@@ -40,6 +40,15 @@ cd frontend && npx playwright test --trace off     # e2e (offline, com fixtures)
 7. **TDD**: escreva o teste, veja falhar, implemente, veja passar, commit.
 8. Valor que depende de projeção **sempre** carrega o alerta `PROJECAO`. Estimativa de saída antecipada
    do Tesouro **sempre** carrega `ESTIMATIVA_MERCADO`.
+9. **Um único modelo carregado no Unsloth, sempre.** O servidor de modelos (Unsloth Studio, em
+   `LLM_BASE_URL`) roda na máquina do usuário; dois modelos ao mesmo tempo já derrubaram o Windows.
+   - Ninguém (código, script ou agente) chama `/load`, `/unload` ou qualquer rota que mude configuração
+     do Studio (`multi-model`, `openai-auto-switch`, `model-memory`, `vram-budget`...). Só leitura.
+   - A troca automática do Studio (auto-switch, com multi-model desligado) é aceita: ela descarrega o
+     modelo atual antes de carregar o pedido.
+   - Se o multi-model estiver ligado, o Liquido **não importa** e avisa o usuário.
+   - Só o `unsloth/Qwen3.5-9B-GGUF`. **Nunca** o Qwen3.8-27B (não cabe na VRAM e esgotou a memória).
+   - Uma chamada de cada vez: nada de paralelizar leituras nem rodar a avaliação junto com o worker.
 
 ## Convenções
 
