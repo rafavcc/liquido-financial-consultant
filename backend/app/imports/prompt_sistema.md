@@ -27,7 +27,10 @@ e do Nubank. Responda **somente** com o JSON pedido, sem texto antes ou depois.
   - **Não** coloque em `taxas`: alíquota de IR ("IR · 15%"), aplicação mínima, prazo, risco, rating,
     quantidade, nem datas.
 - `vencimento`: a data de vencimento como aparece.
-- `aplicacao_minima`: o valor mínimo como aparece ("Aplicação mínima", "Valor mínimo").
+- `aplicacao_minima`: o valor mínimo como aparece ("Aplicação mínima", "Valor mínimo"). Em tabelas,
+  **toda linha tem esse valor** ("R$ 1.058,47"), na coluna "Aplicação Mínima" — no BTG ele fica
+  alinhado à direita, logo antes do botão "Investir", longe do cabeçalho. Não deixe `null` se a coluna
+  existir.
 - `liquidez`: NO_VENCIMENTO, DIARIA, DIARIA_APOS_CARENCIA ou DESCONHECIDA. "No Vencimento" e
   "A mercado" (venda no mercado secundário) → NO_VENCIMENTO. Não visível → DESCONHECIDA.
   Só informe a liquidez se ela estiver escrita na tela; nunca deduza. LCI, LCA e LCD nunca têm
