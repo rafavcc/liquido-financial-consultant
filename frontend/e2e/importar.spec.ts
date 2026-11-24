@@ -24,7 +24,6 @@ test("importa um print, vê o produto no comparador e corrige a falha", async ({
   const dialog = page.getByRole("dialog", { name: "Corrigir oferta" });
   // o formulário só traz o nome quando a interpretação chegou a montar o produto
   await dialog.getByLabel("Nome").fill("CDB Gama 2029");
-  await dialog.getByLabel("Nome").fill("CDB Gama 2029");
   await dialog.getByLabel("Vencimento").fill("2029-03-15");
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(dialog).toBeHidden();

@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sys
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import httpx
@@ -17,6 +18,7 @@ import httpx
 from app.domain.settings import Settings
 from app.imports.interpret import Created, interpret_offer
 from app.imports.llm import LlmConfig, OpenAICompatClient
+from app.imports.schema import RawExtraction
 from app.imports.service import detect_mime
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -24,21 +26,27 @@ DEFAULT_DIR = BACKEND_DIR / "calibration" / "prints"
 FIELDS = ("tipo", "emissor", "taxa", "vencimento", "minimo")
 
 
+def _num(v: Decimal | None) -> str:
+    """Forma canônica de um Decimal (0.1120 == 0.112; 1000.00 == 1000)."""
+    if v is None:
+        return ""
+    n = v.normalize()
+    return format(n, "f")
+
+
 def actual_fields(data) -> dict[str, str]:
     return {
         "tipo": data.tipo.value,
         "emissor": (data.emissor or "").strip().casefold(),
-        "taxa": str(data.taxa),
+        "taxa": _num(data.taxa),
         "vencimento": data.data_vencimento.isoformat() if data.data_vencimento else "",
-        "minimo": str(data.valor_minimo),
+        "minimo": _num(data.valor_minimo),
     }
 
 
 def _expected_fields(e: dict) -> dict[str, str]:
-    from decimal import Decimal
-
     def dec(v) -> str:
-        return str(Decimal(str(v))) if v is not None else ""
+        return _num(Decimal(str(v))) if v is not None else ""
 
     return {
         "tipo": str(e.get("tipo", "")).upper(),
@@ -49,15 +57,39 @@ def _expected_fields(e: dict) -> dict[str, str]:
     }
 
 
-def compare(expected: list[dict], created: list) -> dict[str, tuple[int, int]]:
-    """Acertos por campo: pareia por ordem; oferta que faltou conta como erro. Devolve {campo: (acertos, total)}."""
+def interpreted(raw: RawExtraction, settings: Settings, today: date) -> list:
+    """ProductData das ofertas que o interpretador aceita (cortadas, ignoradas e falhas ficam de fora)."""
+    out = []
+    for offer in raw.ofertas:
+        r = interpret_offer(offer, raw.plataforma, settings, today)
+        if isinstance(r, Created):
+            out.append(r.data)
+    return out
+
+
+def expected_fields_from(obj, settings: Settings, today: date) -> list[dict[str, str]]:
+    """O gabarito é uma RawExtraction transcrita à mão (interpretada pelo mesmo caminho do modelo)
+    ou uma lista simples de {tipo, emissor, taxa, vencimento, valor_minimo}."""
+    if isinstance(obj, dict) and "ofertas" in obj:
+        raw = RawExtraction.model_validate(obj)
+        return [actual_fields(d) for d in interpreted(raw, settings, today)]
+    return [_expected_fields(e) for e in obj]
+
+
+def compare(expected: list[dict[str, str]], got: list[dict[str, str]]) -> dict[str, tuple[int, int]]:
+    """Acertos por campo. Cada oferta esperada é pareada com uma lida ainda livre de mesmo tipo e vencimento
+    (ou, na falta, só mesmo vencimento); a que não tem par conta como erro em todos os campos."""
     result = {f: [0, 0] for f in FIELDS}
-    for i, e in enumerate(expected):
-        want = _expected_fields(e)
-        got = actual_fields(created[i]) if i < len(created) else None
+    livres = list(got)
+    for want in expected:
+        have = next((g for g in livres if g["tipo"] == want["tipo"] and g["vencimento"] == want["vencimento"]), None)
+        if have is None:
+            have = next((g for g in livres if g["vencimento"] == want["vencimento"]), None)
+        if have is not None:
+            livres.remove(have)
         for f in FIELDS:
             result[f][1] += 1
-            if got is not None and got[f] == want[f]:
+            if have is not None and have[f] == want[f]:
                 result[f][0] += 1
     return {f: (a, t) for f, (a, t) in result.items()}
 
@@ -88,15 +120,13 @@ def main(argv: list[str]) -> int:
             print(f"   erro: {exc}")
             continue
         (out_dir / f"{img.stem}.json").write_text(raw.model_dump_json(indent=2), encoding="utf-8")
-        created = []
-        for offer in raw.ofertas:
-            r = interpret_offer(offer, raw.plataforma, settings, today)
-            created.extend([r.data] if isinstance(r, Created) else [])
+        created = interpreted(raw, settings, today)
         print(f"   {len(raw.ofertas)} ofertas lidas, {len(created)} interpretadas")
         exp_file = img.with_name(f"{img.stem}.esperado.json")
         if not exp_file.is_file():
             continue
-        res = compare(json.loads(exp_file.read_text(encoding="utf-8")), created)
+        want = expected_fields_from(json.loads(exp_file.read_text(encoding="utf-8")), settings, today)
+        res = compare(want, [actual_fields(d) for d in created])
         for f, (a, t) in res.items():
             totals[f][0] += a
             totals[f][1] += t
