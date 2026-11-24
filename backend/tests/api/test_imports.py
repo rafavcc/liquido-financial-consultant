@@ -184,3 +184,15 @@ def test_lifespan_worker_processes_and_stops(tmp_path, monkeypatch, fixtures_dir
             time.sleep(0.05)
         assert status == "CONCLUIDO"
     assert not workers[0].is_alive()
+
+
+def test_no_worker_without_llm_so_a_second_instance_never_steals_the_queue(tmp_path, monkeypatch):
+    """Uma instância sem LLM (ex.: o serviço sem o env) no mesmo banco não pode pegar itens e
+    marcá-los "não configurada" enquanto outra instância configurada os processa."""
+    for v in ("LLM_BASE_URL", "CASA_LLM_MODEL", "LIQUIDO_LLM_FIXTURES", "LIQUIDO_IMPORT_WORKER"):
+        monkeypatch.delenv(v, raising=False)
+    app = create_app(tmp_path / "db.sqlite", fetchers=FixtureFetchers(FIXTURES), today_fn=lambda: TODAY)
+    before = {t for t in __import__("threading").enumerate() if t.name == "import-worker"}
+    with TestClient(app):
+        novos = [t for t in __import__("threading").enumerate() if t.name == "import-worker" and t not in before]
+        assert novos == []

@@ -27,7 +27,8 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         worker = None
-        if container.imports is not None and os.environ.get("LIQUIDO_IMPORT_WORKER") != "0":
+        # sem LLM não há worker: outra instância no mesmo banco pode estar processando a fila
+        if container.imports is not None and container.llm is not None and os.environ.get("LIQUIDO_IMPORT_WORKER") != "0":
             worker = ImportWorker(container.imports, container.import_wake)
             worker.start()
             container.import_wake.set()  # drena o que ficou na fila
