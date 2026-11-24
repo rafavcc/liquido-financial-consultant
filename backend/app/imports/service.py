@@ -197,17 +197,13 @@ class ImportService:
             update: dict = {"data_registro": self._today(), "print_id": data.print_id}
             if data.disponivel_ate is not None:
                 update["disponivel_ate"] = data.disponivel_ate
-            if (
-                not minimo_desconhecido
-                and found.print_id is not None
-                and found.print_id in batch_print_ids
-            ):
-                update["valor_minimo"] = min(found.valor_minimo, data.valor_minimo)
-            elif not minimo_desconhecido and found.valor_minimo == 0 and data.valor_minimo > 0:
-                # 0 é "mínimo desconhecido" (o modelo não leu): preenche quando outro print traz o valor
+            if not minimo_desconhecido and found.valor_minimo == 0 and data.valor_minimo > 0:
+                # 0 é "mínimo desconhecido" (o modelo não leu): preenche quando um print traz o valor
                 update["valor_minimo"] = data.valor_minimo
                 notas = [n for n in (found.observacoes or "").splitlines() if "Importado: mínimo n" not in n]
                 update["observacoes"] = "\n".join(notas) or None
+            elif not minimo_desconhecido and found.print_id is not None and found.print_id in batch_print_ids:
+                update["valor_minimo"] = min(found.valor_minimo, data.valor_minimo)
             self._products.update(found.id, found.model_copy(update=update))
             return "renovado"
 

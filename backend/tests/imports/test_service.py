@@ -433,3 +433,24 @@ def test_renewal_fills_a_minimum_that_was_unknown(env):
     (p,) = env.products.list()
     assert p.valor_minimo == 1000
     assert "mínimo não visível" not in (p.observacoes or "")
+
+
+def test_reupload_of_same_print_fills_unknown_minimum(env):
+    """O mesmo arquivo subido de novo reaproveita o print_id (está no lote): o 0 desconhecido ainda é preenchido."""
+    from app.imports.interpret import interpret_offer
+    from app.imports.schema import RawOffer, RawRate
+
+    def offer(minimo):
+        return RawOffer(
+            tipo="CDB", emissor="Banco X", taxas=[RawRate(rotulo="Taxa", texto="110% do CDI")],
+            vencimento="23/11/2028", aplicacao_minima=minimo,
+        )
+
+    settings, today = SettingsRepository(env.conn).get(), env.clock.now.date()
+    b1, _ = env.svc.enqueue([shot("btg-app-lci-eq-cdb")])
+    pid = env.items(b1)[0].print_id
+    unknown = interpret_offer(offer(None), "XP", settings, today)
+    env.svc.upsert_offer(unknown.data.model_copy(update={"print_id": pid}), {pid}, unknown.minimo_desconhecido)
+    known = interpret_offer(offer("R$ 1.000,00"), "XP", settings, today)
+    env.svc.upsert_offer(known.data.model_copy(update={"print_id": pid}), {pid}, known.minimo_desconhecido)
+    assert env.products.list()[0].valor_minimo == 1000
