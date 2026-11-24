@@ -77,6 +77,8 @@ class AlertCode(StrEnum):
     RESGATE_DN = "RESGATE_DN"
     ERRO_CALCULO = "ERRO_CALCULO"
     VENCIDO = "VENCIDO"
+    OFERTA_ANTIGA = "OFERTA_ANTIGA"
+    IMPORTADO_IA = "IMPORTADO_IA"
 
 
 _DEFAULT_COVERAGE = {
@@ -88,6 +90,14 @@ _DEFAULT_COVERAGE = {
     ProductType.CRA: Coverage.NENHUMA,
     ProductType.FUNDO_RF: Coverage.NENHUMA,
 }
+
+
+Periodicidade = Literal["MENSAL", "TRIMESTRAL", "SEMESTRAL", "ANUAL"]
+
+
+class Amortizacao(BaseModel):
+    periodicidade: Periodicidade
+    inicio: date
 
 
 class ProductData(BaseModel):
@@ -109,6 +119,12 @@ class ProductData(BaseModel):
     taxa_adm: Decimal | None = None
     prazo_resgate_dias: int | None = None
     classe_tributaria: Literal["LONGO", "CURTO"] | None = None
+    data_registro: date | None = None
+    disponivel_ate: date | None = None
+    origem: Literal["MANUAL", "IA"] = "MANUAL"
+    print_id: str | None = None
+    juros_periodicos: Periodicidade | None = None
+    amortizacao: Amortizacao | None = None
 
     @model_validator(mode="after")
     def _fill_coverage(self) -> ProductData:
@@ -193,6 +209,7 @@ class Product(ABC):
     def _common_alerts(
         self, valor: Decimal, ctx: SimContext, projecao: bool = True
     ) -> list[Alert]:
+        from app.domain.offers import offer_alerts
         from app.domain.products.accrual import needs_index
 
         d = self.data
@@ -219,6 +236,7 @@ class Product(ABC):
             alertas.append(Alert(code=AlertCode.SEM_FGC, message="Sem cobertura do FGC"))
         if d.exemplo:
             alertas.append(Alert(code=AlertCode.EXEMPLO, message="Produto fictício (exemplo)"))
+        alertas.extend(offer_alerts(d, ctx.settings, ctx.today))
         return alertas
 
     @staticmethod

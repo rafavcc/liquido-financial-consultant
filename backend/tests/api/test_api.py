@@ -215,3 +215,53 @@ def test_seed_items_pass_validation(tmp_path):
 
 def test_health(client_fixtures):
     assert client_fixtures.get("/api/health").json() == {"status": "ok"}
+
+
+def test_create_stamps_today_and_put_preserves(client_fixtures):
+    c = client_fixtures
+    r = c.post("/api/products", json=_novo(origem="IA", print_id="x", data_registro="2020-01-01"))
+    novo = r.json()
+    assert novo["data_registro"] == TODAY.isoformat()
+    assert novo["origem"] == "MANUAL" and novo["print_id"] is None
+
+    c.app.state.container.products.update(
+        novo["id"],
+        ProductData.model_validate(
+            {**novo, "origem": "IA", "print_id": "p1", "juros_periodicos": "ANUAL"}
+        ),
+    )
+    r = c.put(
+        f"/api/products/{novo['id']}",
+        json={**novo, "data_registro": "2020-01-01", "origem": "MANUAL", "print_id": None,
+              "juros_periodicos": None, "disponivel_ate": "2030-01-01"},
+    )
+    out = r.json()
+    assert out["data_registro"] == TODAY.isoformat()
+    assert out["origem"] == "IA" and out["print_id"] == "p1" and out["juros_periodicos"] == "ANUAL"
+    assert out["disponivel_ate"] == "2030-01-01"
+
+    dup = c.post(f"/api/products/{novo['id']}/duplicate").json()
+    assert dup["data_registro"] == TODAY.isoformat() and dup["origem"] == "MANUAL" and dup["print_id"] is None
+
+
+def test_list_has_age_and_expired(client_fixtures):
+    c = client_fixtures
+    novo = c.post("/api/products", json=_novo()).json()
+    c.app.state.container.products.update(
+        novo["id"], ProductData.model_validate({**novo, "data_registro": "2026-10-20"})
+    )
+    rows = {p["id"]: p for p in c.get("/api/products").json()}
+    assert rows[novo["id"]]["idade_dias"] == 30 and rows[novo["id"]]["expirada"] is True
+    ex = next(p for p in rows.values() if p["exemplo"])
+    assert ex["idade_dias"] is None and ex["expirada"] is False
+
+
+def test_migration_stamps_once(tmp_path):
+    from app.deps import stamp_missing_registration
+
+    repo = ProductRepository(db.connect(tmp_path / "m.db"))
+    repo.create(ProductData.model_validate({**_novo(), "id": "a"}))
+    repo.create(ProductData.model_validate({**_novo(), "id": "b", "exemplo": True}))
+    assert stamp_missing_registration(repo, TODAY) == 1
+    assert stamp_missing_registration(repo, TODAY) == 0
+    assert repo.get("a").data_registro == TODAY and repo.get("b").data_registro is None

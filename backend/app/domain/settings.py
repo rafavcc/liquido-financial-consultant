@@ -60,6 +60,8 @@ class Settings(BaseModel):
     prazo_min_meses_lca: int = 6
     prazo_min_meses_lca_ipca: int = 12
     prazo_min_meses_lcd: int = 12
+    oferta_alerta_dias: int = 14
+    oferta_expira_dias: int = 28
 
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
@@ -90,6 +92,9 @@ class Settings(BaseModel):
         ):
             if getattr(self, name) < 0:
                 raise ValueError("prazo mínimo não pode ser negativo")
+
+        if not (1 <= self.oferta_alerta_dias < self.oferta_expira_dias):
+            raise ValueError("o alerta de oferta antiga deve vir antes da expiração")
 
         if self.market_cache_ttl_hours < 1:
             raise ValueError("market_cache_ttl_hours deve ser >= 1")

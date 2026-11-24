@@ -3,6 +3,7 @@ from typing import Protocol
 
 from app.data.market import MarketSnapshot
 from app.data.repositories import ProductRepository
+from app.domain.offers import is_expired
 from app.domain.products.base import Product, SimContext
 from app.domain.products.factory import build_product
 from app.domain.products.treasury import build_treasury
@@ -25,7 +26,7 @@ class ManualSource:
     def load(self, ctx: SimContext, snapshot: MarketSnapshot) -> list[Product]:
         out: list[Product] = []
         for d in self._repo.list():
-            if not d.ativo:
+            if not d.ativo or is_expired(d, ctx.settings, ctx.today):
                 continue
             try:
                 out.append(build_product(d))

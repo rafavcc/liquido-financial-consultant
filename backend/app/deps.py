@@ -73,6 +73,16 @@ def _seed(products: ProductRepository, settings: SettingsRepository) -> None:
     settings.mark_seeded()
 
 
+def stamp_missing_registration(products: ProductRepository, today: date) -> int:
+    """Carimba `data_registro` nos produtos não-exemplo que ainda não têm. Idempotente."""
+    n = 0
+    for p in products.list():
+        if not p.exemplo and p.data_registro is None:
+            products.update(p.id, p.model_copy(update={"data_registro": today}))
+            n += 1
+    return n
+
+
 def build_container(
     db_path: Path | None,
     fetchers: MarketFetchers | None,
@@ -94,6 +104,7 @@ def build_container(
         static_dir = Path(os.environ.get("LIQUIDO_STATIC_DIR", BACKEND_DIR.parent / "frontend" / "dist"))
     products, settings = ProductRepository(conn), SettingsRepository(conn)
     _seed(products, settings)
+    stamp_missing_registration(products, today_fn())
     lock = threading.RLock()
     cache = LockedMarketCache(MarketCacheRepository(conn), lock)
     market = MarketService(cache, fetchers, lambda: datetime.now(UTC))
