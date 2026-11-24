@@ -49,6 +49,15 @@ def _safe_simulate(product: Product, valor: Decimal, data_alvo: date, ctx: SimCo
         return Product._unavailable(product, valor, AlertCode.ERRO_CALCULO, "Erro ao calcular este produto", ctx)
 
 
+def _safe_simulate_natural(product: Product, valor: Decimal, ctx: SimContext) -> SimulationResult:
+    try:
+        data_alvo = horizonte_natural(product.data, ctx.today, ctx.cal)
+        return product.simulate(valor, data_alvo, ctx)
+    except Exception:  # noqa: BLE001 - um produto com erro não derruba os demais
+        log.exception("Erro ao simular o produto %s", product.data.id)
+        return Product._unavailable(product, valor, AlertCode.ERRO_CALCULO, "Erro ao calcular este produto", ctx)
+
+
 def _com_prazo(result: SimulationResult, ctx: SimContext) -> SimulationResult:
     if result.secao != Section.INDISPONIVEL:
         result.prazo_saida_dias = prazo_saida_dias(result.product, ctx.today, ctx.cal)
@@ -78,10 +87,7 @@ def simulate_sem_data(
     products: list[Product], valor: Decimal, ctx: SimContext
 ) -> tuple[list[SimulationResult], list[SimulationResult], list[SimulationResult]]:
     """Simula cada produto até o seu horizonte natural; ordena por taxa líquida a.a."""
-    results = [
-        _com_prazo(_safe_simulate(p, valor, horizonte_natural(p.data, ctx.today, ctx.cal), ctx), ctx)
-        for p in products
-    ]
+    results = [_com_prazo(_safe_simulate_natural(p, valor, ctx), ctx) for p in products]
     ate = [r for r in results if r.secao in (Section.VENCE_ATE_DATA, Section.VENCE_DEPOIS) and r.resgatavel]
     depois = [r for r in results if r.secao in (Section.VENCE_ATE_DATA, Section.VENCE_DEPOIS) and not r.resgatavel]
     indisp = [r for r in results if r.secao == Section.INDISPONIVEL]

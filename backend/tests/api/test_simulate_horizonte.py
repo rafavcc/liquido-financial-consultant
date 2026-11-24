@@ -29,7 +29,7 @@ def test_sem_data(client_fixtures):
     taxas = [D(r["taxa_liquida_aa"]) for r in body["vence_ate_data"] if r["taxa_liquida_aa"] is not None]
     assert taxas == sorted(taxas, reverse=True)
     um_ano = anos_a_frente(TODAY, 1, get_calendar()).isoformat()
-    # Selic que vence dentro do horizonte natural (1 ano) não é vendida antes: sem estimativa.
+    # Selic que vence depois do horizonte de 1 ano é vendida antes do vencimento: carrega ESTIMATIVA_MERCADO.
     selic = [
         r
         for r in body["vence_ate_data"]

@@ -24,7 +24,8 @@ def anos_a_frente(today: date, anos: int, cal: BusinessCalendar) -> date:
 
 
 def _venc(d: ProductData, cal: BusinessCalendar) -> date:
-    assert d.data_vencimento is not None
+    if d.data_vencimento is None:
+        raise ValueError("produto exige data_vencimento")
     return cal.adjust_next(d.data_vencimento)
 
 

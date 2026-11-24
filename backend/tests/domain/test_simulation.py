@@ -83,3 +83,17 @@ def test_sem_data_simula_cada_um_ate_o_seu_horizonte():
 def test_sem_data_produto_quebrado_vai_para_indisponiveis():
     ate, depois, indisp = simulate_sem_data([Broken(), _p("ok")], D("50000"), ctx)
     assert [r.product.id for r in ate] == ["ok"] and [r.product.id for r in indisp] == ["quebrado"]
+
+
+class SemVencimento:
+    data = make(id="sem_venc", nome="Sem vencimento").model_copy(update={"data_vencimento": None})
+
+    def simulate(self, valor, data_alvo, ctx):
+        raise AssertionError("não deveria simular")
+
+
+def test_sem_data_produto_sem_vencimento_vai_para_indisponiveis():
+    ate, depois, indisp = simulate_sem_data([SemVencimento(), _p("ok")], D("50000"), ctx)
+    assert [r.product.id for r in ate] == ["ok"]
+    assert [r.product.id for r in indisp] == ["sem_venc"]
+    assert indisp[0].alertas[0].code == AlertCode.ERRO_CALCULO
