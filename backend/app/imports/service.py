@@ -85,8 +85,16 @@ class ImportService:
 
     def retry_item(self, item_id: str) -> None:
         with self._lock:
+            item = self._repo.get_item(item_id)
+            if item is None:
+                raise KeyError(item_id)
+            if item.status != "ERRO":
+                raise ValueError("Só é possível tentar de novo um item com erro")
+            # reprocessar é idempotente nos produtos (offer_key); as falhas abertas são refeitas do zero
+            self._repo.delete_open_failures(item_id)
             self._repo.set_status(
-                item_id, "NA_FILA", tentativas=0, proxima_tentativa=None, erro=None, concluido_em=None
+                item_id, "NA_FILA", tentativas=0, proxima_tentativa=None, erro=None, concluido_em=None,
+                iniciado_em=None, criados=0, renovados=0, ignorados=0, falhas=0,
             )
 
     # --- processamento -----------------------------------------------------------------------
@@ -101,7 +109,15 @@ class ImportService:
             self._process(item)
         except Exception as exc:  # o item nunca fica LENDO
             log.exception("Falha inesperada ao importar %s", item.id)
-            self._fail(item, str(exc) or exc.__class__.__name__)
+            try:
+                self._fail(item, str(exc) or exc.__class__.__name__)
+            except Exception:
+                log.exception("Não foi possível marcar %s como ERRO; recolocando na fila", item.id)
+                try:
+                    with self._lock:
+                        self._repo.set_status(item.id, "NA_FILA")
+                except Exception:
+                    log.exception("Não foi possível recolocar %s na fila", item.id)
         return True
 
     def _fail(self, item: ImportItem, erro: str, **fields) -> None:
@@ -182,11 +198,17 @@ class ImportService:
 
     # --- falhas ------------------------------------------------------------------------------
 
+    def _open_failure(self, failure_id: str):
+        failure = self._repo.get_failure(failure_id)
+        if failure is None:
+            raise KeyError(failure_id)
+        if failure.status != "ABERTA":
+            raise ValueError("Esta falha já foi resolvida ou descartada")
+        return failure
+
     def resolve_failure(self, failure_id: str, data: ProductData) -> ProductData:
         with self._lock:
-            failure = self._repo.get_failure(failure_id)
-            if failure is None:
-                raise KeyError(failure_id)
+            failure = self._open_failure(failure_id)
             today = self._today()
             erros = validate_product(data, self._settings.get(), today)
             if erros:
@@ -203,4 +225,5 @@ class ImportService:
 
     def discard_failure(self, failure_id: str) -> None:
         with self._lock:
+            self._open_failure(failure_id)
             self._repo.set_failure_status(failure_id, "DESCARTADA")

@@ -277,3 +277,67 @@ def test_repeated_offer_with_different_minimums_keeps_lowest(env, monkeypatch):
     assert str(prod.valor_minimo) == "13032.67"
     item = env.items(batch)[0]
     assert (item.criados, item.renovados) == (1, 3)
+
+
+def test_retry_item_only_acts_on_erro(env):
+    batch, _ = env.svc.enqueue([shot("btg-app-lci-eq-cdb")])
+    item = env.items(batch)[0]
+    env.repo.set_status(item.id, "LENDO")
+    with pytest.raises(ValueError, match="Só é possível tentar de novo um item com erro"):
+        env.svc.retry_item(item.id)
+    assert env.items(batch)[0].status == "LENDO"
+    env.repo.set_status(item.id, "CONCLUIDO")
+    with pytest.raises(ValueError):
+        env.svc.retry_item(item.id)
+    assert env.items(batch)[0].status == "CONCLUIDO"
+
+
+def test_resolve_and_discard_require_open_failure(env, monkeypatch):
+    monkeypatch.setattr(env.llm, "extract", lambda image, mime: _failing_extraction())
+    env.svc.enqueue([shot("x")])
+    env.svc.process_next()
+    (fail,) = env.repo.list_failures("ABERTA")
+    env.svc.discard_failure(fail.id)
+    with pytest.raises(ValueError, match="Esta falha já foi resolvida ou descartada"):
+        env.svc.discard_failure(fail.id)
+    ok = fixture("btg-app-lci-eq-cdb")
+    from app.imports.interpret import interpret_offer
+
+    data = interpret_offer(ok.ofertas[0], "BTG", SettingsRepository(env.conn).get(), env.clock.now.date()).data
+    with pytest.raises(ValueError, match="Esta falha já foi resolvida ou descartada"):
+        env.svc.resolve_failure(fail.id, data)
+    assert env.products.list() == []
+    with pytest.raises(KeyError):
+        env.svc.discard_failure("inexistente")
+
+
+def test_process_next_survives_status_write_failure(env):
+    env.llm.error = RuntimeError("boom")
+    batch, _ = env.svc.enqueue([shot("btg-app-lci-eq-cdb")])
+    real = env.repo.set_status
+    state = {"fail": True}
+
+    def flaky(item_id, status, **kw):
+        if status == "ERRO" and state["fail"]:
+            state["fail"] = False
+            raise RuntimeError("disco cheio")
+        return real(item_id, status, **kw)
+
+    env.repo.set_status = flaky
+    assert env.svc.process_next() is True
+    assert env.items(batch)[0].status == "NA_FILA"
+
+
+def test_retry_after_error_does_not_duplicate_failures(env, monkeypatch):
+    monkeypatch.setattr(env.llm, "extract", lambda image, mime: _failing_extraction())
+    batch, _ = env.svc.enqueue([shot("x")])
+    env.svc.process_next()
+    item = env.items(batch)[0]
+    assert item.falhas == 1
+    env.repo.set_status(item.id, "ERRO", erro="queda")
+    env.svc.retry_item(item.id)
+    it = env.items(batch)[0]
+    assert (it.falhas, it.criados, it.erro, it.tentativas, it.iniciado_em) == (0, 0, None, 0, None)
+    env.svc.process_next()
+    assert len(env.repo.list_failures("ABERTA")) == 1
+    assert env.items(batch)[0].falhas == 1

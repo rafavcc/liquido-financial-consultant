@@ -191,6 +191,13 @@ class ImportRepository:
         row = self._conn.execute(f"{self._FAIL_SQL} WHERE f.id = ?", (failure_id,)).fetchone()
         return self._failure(row) if row else None
 
+    def delete_open_failures(self, item_id: str) -> int:
+        cur = self._conn.execute(
+            "DELETE FROM import_failures WHERE item_id = ? AND status = 'ABERTA'", (item_id,)
+        )
+        self._conn.commit()
+        return cur.rowcount
+
     def set_failure_status(self, failure_id: str, status: str) -> None:
         self._conn.execute("UPDATE import_failures SET status = ? WHERE id = ?", (status, failure_id))
         self._conn.commit()
