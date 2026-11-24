@@ -418,7 +418,7 @@ def test_renewal_fills_a_minimum_that_was_unknown(env):
     def offer(minimo):
         return RawOffer(
             tipo="CDB", emissor="Banco X", taxas=[RawRate(rotulo="Taxa", texto="110% do CDI")],
-            vencimento="23/11/2028", aplicacao_minima=minimo,
+            vencimento="23/11/2028", aplicacao_minima=minimo, liquidez="NO_VENCIMENTO",
         )
 
     settings, today = SettingsRepository(env.conn).get(), env.clock.now.date()
@@ -430,9 +430,9 @@ def test_renewal_fills_a_minimum_that_was_unknown(env):
     known = interpret_offer(offer("R$ 1.000,00"), "XP", settings, today)
     # outro lote, outro print: o mínimo real conhecido não rebaixa nada, só preenche o desconhecido
     env.svc.upsert_offer(known.data.model_copy(update={"print_id": "outro"}), {"outro"}, known.minimo_desconhecido)
-    (p,) = env.products.list()
+    (p,) = env.products.list()  # a única nota era a do mínimo: observacoes fica "" (nunca None)
     assert p.valor_minimo == 1000
-    assert "mínimo não visível" not in (p.observacoes or "")
+    assert p.observacoes == ""
 
 
 def test_reupload_of_same_print_fills_unknown_minimum(env):

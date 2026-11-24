@@ -201,10 +201,11 @@ class ImportService:
                 # 0 é "mínimo desconhecido" (o modelo não leu): preenche quando um print traz o valor
                 update["valor_minimo"] = data.valor_minimo
                 notas = [n for n in (found.observacoes or "").splitlines() if "Importado: mínimo n" not in n]
-                update["observacoes"] = "\n".join(notas) or None
+                update["observacoes"] = "\n".join(notas)
             elif not minimo_desconhecido and found.print_id is not None and found.print_id in batch_print_ids:
                 update["valor_minimo"] = min(found.valor_minimo, data.valor_minimo)
-            self._products.update(found.id, found.model_copy(update=update))
+            # valida: model_copy não valida e um campo errado tornaria o registro ilegível na listagem
+            self._products.update(found.id, ProductData.model_validate({**found.model_dump(), **update}))
             return "renovado"
 
     # --- falhas ------------------------------------------------------------------------------
