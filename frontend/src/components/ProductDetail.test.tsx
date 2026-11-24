@@ -91,3 +91,21 @@ test("rentabilidade negativa no detalhe usa sinal correto e tom de perda", () =>
   expect(screen.getByText("−1,93%")).toHaveClass("text-neg");
   expect(screen.getByText("−28,90%")).toHaveClass("text-neg");
 });
+
+test("mostra Registrado em com idade, Disponível até e link Ver print", () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 3);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const reg = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const r = { ...fixtureDetail, product: { ...fixtureDetail.product, data_registro: reg, disponivel_ate: "2030-12-10", origem: "IA" as const, print_id: "pp1" } };
+  render(<ProductDetail result={r} mercado={mercado} open onOpenChange={() => {}} />);
+  expect(screen.getByText(`Registrado em ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} (há 3 dias)`)).toBeInTheDocument();
+  expect(screen.getByText("Disponível até 10/12/2030")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ver print" })).toHaveAttribute("href", "/api/prints/pp1");
+});
+
+test("sem datas de oferta nem print, nada disso aparece", () => {
+  render(<ProductDetail result={fixtureDetail} mercado={mercado} open onOpenChange={() => {}} />);
+  expect(screen.queryByText(/Registrado em/)).toBeNull();
+  expect(screen.queryByRole("link", { name: "Ver print" })).toBeNull();
+});

@@ -1,9 +1,9 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useState, type ReactNode } from "react";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, printUrl } from "../api/client";
 import type { Indexer, Liquidity, ProductData, ProductType } from "../api/types";
-import { maskBRL } from "../lib/format";
+import { formatDate, maskBRL } from "../lib/format";
 import { decimalToBRLInput, fractionToPercent, percentToFraction } from "../lib/percent";
 import { parseBRL } from "../lib/parse";
 
@@ -14,6 +14,12 @@ interface Props {
   product?: ProductData;
   /** Plataformas já usadas, oferecidas como sugestão junto com XP e BTG Pactual. */
   plataformas?: string[];
+  /** Valores iniciais de um cadastro novo (ex.: correção de falha de importação). */
+  initial?: Partial<ProductData>;
+  /** Print de origem, mostrado ao lado do formulário. */
+  printId?: string;
+  /** Substitui a chamada de salvar (ex.: resolver falha); o formulário segue o mesmo fluxo de erros. */
+  onSubmitOverride?: (p: Partial<ProductData>) => Promise<ProductData>;
 }
 
 type TipoForm = Extract<ProductType, "CDB" | "LCI" | "LCA" | "LCD" | "CRI" | "CRA" | "FUNDO_RF">;
@@ -71,31 +77,33 @@ interface FormState {
   taxa_adm: string;
   prazo_resgate_dias: string;
   classe_tributaria: "LONGO" | "CURTO";
+  disponivel_ate: string;
 }
 
 const EMPTY: FormState = {
   tipo: "CDB", nome: "", emissor: "", plataforma: "", indexador: "PCT_CDI", taxa: "", data_vencimento: "",
   valor_minimo: "", liquidez: "NO_VENCIMENTO", data_carencia: "", observacoes: "", taxa_adm: "",
-  prazo_resgate_dias: "", classe_tributaria: "LONGO",
+  prazo_resgate_dias: "", classe_tributaria: "LONGO", disponivel_ate: "",
 };
 
-function fromProduct(p: ProductData): FormState {
+function fromProduct(p: Partial<ProductData>): FormState {
   const fundo = p.tipo === "FUNDO_RF";
   return {
-    tipo: (TIPOS.some((t) => t.id === p.tipo) ? p.tipo : "CDB") as TipoForm,
-    nome: p.nome,
-    emissor: p.emissor,
-    plataforma: p.plataforma,
-    indexador: p.indexador,
-    taxa: fractionToPercent(p.taxa),
+    tipo: (TIPOS.some((t) => t.id === p.tipo) ? p.tipo : EMPTY.tipo) as TipoForm,
+    nome: p.nome ?? "",
+    emissor: p.emissor ?? "",
+    plataforma: p.plataforma ?? "",
+    indexador: p.indexador ?? EMPTY.indexador,
+    taxa: p.taxa ? fractionToPercent(p.taxa) : "",
     data_vencimento: p.data_vencimento ?? "",
-    valor_minimo: decimalToBRLInput(p.valor_minimo),
-    liquidez: fundo ? "NO_VENCIMENTO" : p.liquidez,
+    valor_minimo: p.valor_minimo ? decimalToBRLInput(p.valor_minimo) : "",
+    liquidez: fundo ? "NO_VENCIMENTO" : (p.liquidez ?? EMPTY.liquidez),
     data_carencia: p.data_carencia ?? "",
-    observacoes: p.observacoes,
-    taxa_adm: fractionToPercent(p.taxa_adm),
-    prazo_resgate_dias: p.prazo_resgate_dias === null ? "" : String(p.prazo_resgate_dias),
+    observacoes: p.observacoes ?? "",
+    taxa_adm: p.taxa_adm ? fractionToPercent(p.taxa_adm) : "",
+    prazo_resgate_dias: p.prazo_resgate_dias == null ? "" : String(p.prazo_resgate_dias),
     classe_tributaria: p.classe_tributaria ?? "LONGO",
+    disponivel_ate: p.disponivel_ate ?? "",
   };
 }
 
@@ -154,6 +162,7 @@ function build(f: FormState, base?: ProductData): { body?: Partial<ProductData>;
     taxa_adm: fundo ? taxaAdm : null,
     prazo_resgate_dias: fundo ? prazo : null,
     classe_tributaria: fundo ? f.classe_tributaria : null,
+    disponivel_ate: f.disponivel_ate || null,
   };
   return { body, errors };
 }
@@ -222,9 +231,9 @@ function Affixed({
   );
 }
 
-export function ProductForm({ open, onOpenChange, product, plataformas = [] }: Props) {
+export function ProductForm({ open, onOpenChange, product, plataformas = [], initial, printId, onSubmitOverride }: Props) {
   const qc = useQueryClient();
-  const [f, setF] = useState<FormState>(() => (product ? fromProduct(product) : EMPTY));
+  const [f, setF] = useState<FormState>(() => (product ? fromProduct(product) : initial ? fromProduct(initial) : EMPTY));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [topErrors, setTopErrors] = useState<string[]>([]);
   const listId = useId();
@@ -238,7 +247,7 @@ export function ProductForm({ open, onOpenChange, product, plataformas = [] }: P
 
   const save = useMutation({
     mutationFn: (body: Partial<ProductData>) =>
-      product ? api.products.update(product.id, body) : api.products.create(body),
+      onSubmitOverride ? onSubmitOverride(body) : product ? api.products.update(product.id, body) : api.products.create(body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["products"] });
       void qc.invalidateQueries({ queryKey: ["simulate"] });
@@ -280,13 +289,21 @@ export function ProductForm({ open, onOpenChange, product, plataformas = [] }: P
       <Dialog.Portal>
         <Dialog.Overlay className="detail-overlay fixed inset-0 z-40 bg-black/50" />
         <Dialog.Content
-          className="detail-content fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface text-ink shadow-xl
-            sm:left-auto sm:w-[520px] sm:border-l sm:border-line"
+          className={`detail-content fixed inset-0 z-50 flex overflow-hidden bg-surface text-ink shadow-xl
+            sm:left-auto sm:border-l sm:border-line ${printId ? "flex-col sm:w-[960px] sm:flex-row" : "flex-col sm:w-[520px]"}`}
         >
+          {printId && (
+            <aside className="max-h-56 shrink-0 overflow-auto border-b border-line bg-subtle p-3 sm:max-h-none sm:w-[420px] sm:border-b-0 sm:border-r">
+              <a href={printUrl(printId)} target="_blank" rel="noreferrer">
+                <img src={printUrl(printId)} alt="Print da oferta" className="w-full rounded-lg border border-line" />
+              </a>
+            </aside>
+          )}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="flex items-start justify-between gap-3 border-b border-line px-5 pb-4 pt-5">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold leading-tight">
-                {editando ? "Editar produto" : "Novo produto"}
+                {editando ? "Editar produto" : onSubmitOverride ? "Corrigir oferta" : "Novo produto"}
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-muted">
                 Cadastre a oferta como aparece na plataforma. Taxas em %, como você lê no app.
@@ -451,6 +468,14 @@ export function ProductForm({ open, onOpenChange, product, plataformas = [] }: P
                 </>
               )}
 
+              <Field label="Disponível até" error={fieldErrors.disponivel_ate} hint="Opcional. Depois desta data a oferta sai do ranking.">
+                {(id, d) => (
+                  <input id={id} aria-describedby={d} aria-invalid={!!fieldErrors.disponivel_ate} type="date" value={f.disponivel_ate}
+                    onChange={(e) => set("disponivel_ate", e.target.value)} className={inputCls(fieldErrors.disponivel_ate)} />
+                )}
+              </Field>
+              {product?.data_registro && <p className="text-xs text-muted">Registrado em {formatDate(product.data_registro)}</p>}
+
               <Field label="Observações" error={fieldErrors.observacoes}>
                 {(id, d) => (
                   <textarea id={id} aria-describedby={d} rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)}
@@ -475,6 +500,7 @@ export function ProductForm({ open, onOpenChange, product, plataformas = [] }: P
               </button>
             </footer>
           </form>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -39,6 +39,19 @@ export function formatDate(iso: string | null | undefined): string {
   return `${d}/${m}/${y}`;
 }
 
+/** Idade da oferta: 0 → "hoje", 1 → "há 1 dia", N → "há N dias". */
+export function idadeLabel(dias: number): string {
+  return dias <= 0 ? "hoje" : dias === 1 ? "há 1 dia" : `há ${dias} dias`;
+}
+
+/** Dias corridos entre uma data ISO (YYYY-MM-DD) e hoje (calendário local). */
+export function diasDesde(iso: string): number {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const hoje = new Date();
+  const a = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  return Math.round((a - Date.UTC(y, m - 1, d)) / 86_400_000);
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   const dt = new Date(iso);

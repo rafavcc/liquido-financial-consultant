@@ -2,10 +2,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, ApiError } from "../api/client";
-import type { ProductData } from "../api/types";
+import type { ProductData, ProductView } from "../api/types";
 import { IconChevron, IconCopy, IconEdit, IconPlus, IconTrash } from "../components/Icons";
 import { ProductForm } from "../components/ProductForm";
-import { formatBRL, formatDate } from "../lib/format";
+import { formatBRL, formatDate, idadeLabel } from "../lib/format";
 import { indexLabel, resgateLabel, tipoLabel } from "../lib/labels";
 
 const Chip = ({ children, className = "bg-subtle text-muted" }: { children: React.ReactNode; className?: string }) => (
@@ -33,37 +33,39 @@ function Switch({ checked, label, disabled, onChange }: { checked: boolean; labe
   );
 }
 
-function resumo(p: ProductData): string {
+function resumo(p: ProductView): string {
   const dn = resgateLabel(p);
   return [
     p.plataforma,
     tipoLabel(p.tipo) + (dn ? ` ${dn}` : ""),
     indexLabel(p.indexador, p.taxa),
     p.data_vencimento ? `vence ${formatDate(p.data_vencimento)}` : null,
+    p.idade_dias != null ? idadeLabel(p.idade_dias) : null,
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
 interface CardProps {
-  p: ProductData;
+  p: ProductView;
   busy: boolean;
-  onToggle: (p: ProductData, ativo: boolean) => void;
-  onEdit: (p: ProductData) => void;
-  onDuplicate: (p: ProductData) => void;
-  onDelete: (p: ProductData) => void;
+  onToggle: (p: ProductView, ativo: boolean) => void;
+  onEdit: (p: ProductView) => void;
+  onDuplicate: (p: ProductView) => void;
+  onDelete: (p: ProductView) => void;
 }
 
 function ManualCard({ p, busy, onToggle, onEdit, onDuplicate, onDelete }: CardProps) {
   const minimo = Number(p.valor_minimo) > 0 ? `mín. ${formatBRL(p.valor_minimo)}` : null;
   return (
-    <li className={`rounded-2xl border border-line bg-surface p-3 pl-4 shadow-card transition ${p.ativo ? "" : "opacity-70"}`}>
+    <li className={`rounded-2xl border border-line bg-surface p-3 pl-4 shadow-card transition ${p.ativo && !p.expirada ? "" : "opacity-70"} ${p.expirada ? "grayscale" : ""}`}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] font-semibold leading-tight">
             <span className="truncate">{p.nome}</span>
             {p.exemplo && <Chip className="bg-off-bg text-muted">Exemplo</Chip>}
             {!p.ativo && <Chip>Inativo</Chip>}
+            {p.expirada && <Chip className="bg-off-bg text-off">expirada</Chip>}
           </h3>
           <p className="mt-1 text-xs leading-5 text-muted">
             {resumo(p)}
@@ -105,8 +107,9 @@ function ConfirmDelete({ product, pending, onCancel, onConfirm }: { product: Pro
 
 export function Produtos() {
   const qc = useQueryClient();
-  const [form, setForm] = useState<{ product?: ProductData } | null>(null);
-  const [toDelete, setToDelete] = useState<ProductData | null>(null);
+  const [form, setForm] = useState<{ product?: ProductView } | null>(null);
+  const [toDelete, setToDelete] = useState<ProductView | null>(null);
+  const [mostrarExpiradas, setMostrarExpiradas] = useState(true);
   const [showTesouro, setShowTesouro] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -121,22 +124,31 @@ export function Produtos() {
   const onError = (e: unknown) => setErrors(e instanceof ApiError ? e.messages : ["Não foi possível concluir a operação."]);
 
   const toggle = useMutation({
-    mutationFn: ({ p, ativo }: { p: ProductData; ativo: boolean }) => api.products.update(p.id, { ...p, ativo }),
+    mutationFn: ({ p, ativo }: { p: ProductView; ativo: boolean }) => {
+      const { idade_dias: _i, expirada: _e, ...dados } = p;
+      return api.products.update(p.id, { ...dados, ativo });
+    },
     onSuccess: () => { setErrors([]); refetchAll(); },
     onError,
   });
   const duplicate = useMutation({
-    mutationFn: (p: ProductData) => api.products.duplicate(p.id),
+    mutationFn: (p: ProductView) => api.products.duplicate(p.id),
     onSuccess: () => { setErrors([]); refetchAll(); },
     onError,
   });
   const remove = useMutation({
-    mutationFn: (p: ProductData) => api.products.remove(p.id),
+    mutationFn: (p: ProductView) => api.products.remove(p.id),
     onSuccess: () => { setErrors([]); setToDelete(null); refetchAll(); },
     onError: (e) => { setToDelete(null); onError(e); },
   });
 
   const manuais = list.data ?? [];
+  const expiradas = manuais.filter((p) => p.expirada).length;
+  // Expiradas vão para o fim (ordem estável dentro de cada grupo).
+  const visiveis = useMemo(
+    () => [...manuais.filter((p) => !p.expirada), ...(mostrarExpiradas ? manuais.filter((p) => p.expirada) : [])],
+    [manuais, mostrarExpiradas],
+  );
   const plataformas = useMemo(() => [...new Set(manuais.map((p) => p.plataforma))].sort((a, b) => a.localeCompare(b, "pt-BR")), [manuais]);
   const busy = toggle.isPending || duplicate.isPending;
   const base = market.data?.tesouro_data_base;
@@ -168,6 +180,12 @@ export function Produtos() {
           Meus produtos
           <span className="rounded-full bg-subtle px-2 py-0.5 text-xs font-medium text-muted">{manuais.length}</span>
         </h2>
+        {expiradas > 0 && (
+          <label className="mb-3 flex w-fit items-center gap-2 text-sm text-muted">
+            <input type="checkbox" checked={mostrarExpiradas} onChange={(e) => setMostrarExpiradas(e.target.checked)} />
+            Mostrar expiradas
+          </label>
+        )}
         {list.isPending ? (
           <p className="py-8 text-center text-sm text-muted">Carregando…</p>
         ) : manuais.length === 0 && !list.isError ? (
@@ -182,7 +200,7 @@ export function Produtos() {
           </div>
         ) : (
           <ul className="grid gap-3 md:grid-cols-2">
-            {manuais.map((p) => (
+            {visiveis.map((p) => (
               <ManualCard
                 key={p.id}
                 p={p}

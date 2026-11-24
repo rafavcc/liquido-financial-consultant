@@ -69,5 +69,7 @@ export const ALERT_META: Record<AlertCode, { icon: string; text: string; tone: A
   SEM_DADOS_MERCADO: { icon: "📡", text: "Sem dados de mercado", tone: "off" },
   RESGATE_DN: { icon: "🗓️", text: "Prazo de resgate", tone: "info" },
   VENCIDO: { icon: "⌛", text: "Produto vencido", tone: "neg" },
+  OFERTA_ANTIGA: { icon: "⏳", text: "Oferta antiga", tone: "warn" },
+  IMPORTADO_IA: { icon: "🤖", text: "Importado por IA", tone: "off" },
   ERRO_CALCULO: { icon: "⚠️", text: "Erro de cálculo", tone: "neg" },
 };

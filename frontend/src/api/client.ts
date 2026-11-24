@@ -1,4 +1,4 @@
-import type { ImportBatchView, ImportCreated, ImportFailureView, ImportItemView, ImportStatus, MarketSummary, ProductData, Settings, SimulationResponse } from "./types";
+import type { ImportBatchView, ImportCreated, ImportFailureView, ImportItemView, ImportStatus, MarketSummary, ProductData, ProductView, Settings, SimulationResponse } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, public messages: string[]) {
@@ -50,7 +50,7 @@ export const api = {
   market: () => request<MarketSummary>("GET", "/market"),
   refreshMarket: () => request<MarketSummary>("POST", "/market/refresh"),
   products: {
-    list: () => request<ProductData[]>("GET", "/products"),
+    list: () => request<ProductView[]>("GET", "/products"),
     tesouro: () => request<ProductData[]>("GET", "/products/tesouro"),
     create: (p: Partial<ProductData>) => request<ProductData>("POST", "/products", p),
     update: (id: string, p: Partial<ProductData>) => request<ProductData>("PUT", `/products/${id}`, p),

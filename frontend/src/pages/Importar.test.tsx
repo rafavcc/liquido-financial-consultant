@@ -1,13 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { api } from "../api/client";
-import type { ImportBatchView, ImportItemView } from "../api/types";
+import type { ImportBatchView, ImportFailureView, ImportItemView } from "../api/types";
 import { Importar } from "./Importar";
 
 vi.mock("../api/client", async (orig) => {
   const real = await orig<typeof import("../api/client")>();
-  return { ...real, api: { imports: { status: vi.fn(), upload: vi.fn(), list: vi.fn(), retry: vi.fn() } } };
+  return { ...real, api: { imports: { status: vi.fn(), upload: vi.fn(), list: vi.fn(), retry: vi.fn(), failures: vi.fn(), resolve: vi.fn(), discard: vi.fn() } } };
 });
 const imports = vi.mocked(api, true).imports;
 
@@ -35,6 +35,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   imports.status.mockResolvedValue({ configurado: true, alcancavel: true, modelo: "qwen" });
   imports.list.mockResolvedValue([]);
+  imports.failures.mockResolvedValue([]);
 });
 
 test("não configurado mostra aviso e desabilita o seletor", async () => {
@@ -108,4 +109,71 @@ test("falha ao consultar o status explica e mantém o seletor desabilitado", asy
   setup();
   expect(await screen.findByText("Não foi possível verificar a importação. Tente recarregar a página.")).toBeInTheDocument();
   expect(screen.getByLabelText("Escolher prints")).toBeDisabled();
+});
+
+const falha = (o: Partial<ImportFailureView> = {}): ImportFailureView => ({
+  id: "f1", item_id: "i1", print_id: "p9", nome_arquivo: "print9.png", erros: ["taxa: campo obrigatório", "data_vencimento: data inválida"],
+  parcial: { raw: { tipo: "CDB", emissor: "Banco Beta", nome_exibido: "CDB Beta 2030" }, interpretado: { tipo: "CDB", nome: "CDB Beta 2030", emissor: "Banco Beta", plataforma: "XP", indexador: "PCT_CDI", valor_minimo: "1000" } },
+  status: "ABERTA", ...o,
+});
+
+test("falhas: lista miniatura do print, erros e ações; sem falhas a seção não aparece", async () => {
+  setup();
+  await screen.findByText("Nenhum lote importado ainda.");
+  expect(screen.queryByRole("region", { name: "Falhas" })).toBeNull();
+});
+
+test("falhas: mostra miniatura, erros, Corrigir e Descartar", async () => {
+  imports.failures.mockResolvedValue([falha()]);
+  setup();
+  const sec = await screen.findByRole("region", { name: "Falhas" });
+  expect(sec.querySelector('img[src="/api/prints/p9"]')).not.toBeNull();
+  expect(within(sec).getByText("taxa: campo obrigatório")).toBeInTheDocument();
+  expect(within(sec).getByText("data_vencimento: data inválida")).toBeInTheDocument();
+  expect(within(sec).getByRole("button", { name: "Corrigir" })).toBeInTheDocument();
+  expect(within(sec).getByRole("button", { name: "Descartar" })).toBeInTheDocument();
+});
+
+test("falhas: Corrigir abre o formulário preenchido com o print ao lado e salvar chama resolve", async () => {
+  imports.failures.mockResolvedValue([falha()]);
+  imports.resolve.mockResolvedValue({} as never);
+  const { invalidate } = setup();
+  await userEvent.click(await screen.findByRole("button", { name: "Corrigir" }));
+  const dialog = await screen.findByRole("dialog", { name: "Corrigir oferta" });
+  expect(within(dialog).getByLabelText("Nome")).toHaveValue("CDB Beta 2030");
+  expect(within(dialog).getByLabelText("Emissor")).toHaveValue("Banco Beta");
+  expect(within(dialog).getByLabelText("Taxa")).toHaveValue("");
+  expect(dialog.querySelector('img[src="/api/prints/p9"]')).not.toBeNull();
+  await userEvent.type(within(dialog).getByLabelText("Taxa"), "109");
+  fireEvent.change(within(dialog).getByLabelText("Vencimento"), { target: { value: "2031-11-18" } });
+  await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+  await waitFor(() => expect(imports.resolve).toHaveBeenCalledWith("f1", expect.objectContaining({ nome: "CDB Beta 2030", taxa: "1.09", data_vencimento: "2031-11-18" })));
+  await waitFor(() => {
+    const keys = invalidate.mock.calls.map((c) => (c[0] as { queryKey: unknown[] }).queryKey[0]);
+    expect(keys).toEqual(expect.arrayContaining(["imports", "products", "simulate"]));
+  });
+});
+
+test("falhas: sem interpretado, o formulário usa o que dá do raw e deixa o resto vazio", async () => {
+  imports.failures.mockResolvedValue([falha({ parcial: { raw: { tipo: "LCI", emissor: "Banco Gama", nome_exibido: "LCI Gama" } } })]);
+  setup();
+  await userEvent.click(await screen.findByRole("button", { name: "Corrigir" }));
+  const dialog = await screen.findByRole("dialog", { name: "Corrigir oferta" });
+  expect(within(dialog).getByLabelText("Tipo")).toHaveValue("LCI");
+  expect(within(dialog).getByLabelText("Nome")).toHaveValue("LCI Gama");
+  expect(within(dialog).getByLabelText("Emissor")).toHaveValue("Banco Gama");
+  expect(within(dialog).getByLabelText("Plataforma")).toHaveValue("");
+  expect(within(dialog).getByLabelText("Taxa")).toHaveValue("");
+});
+
+test("falhas: Descartar chama discard e atualiza as listas", async () => {
+  imports.failures.mockResolvedValue([falha()]);
+  imports.discard.mockResolvedValue(undefined);
+  const { invalidate } = setup();
+  await userEvent.click(await screen.findByRole("button", { name: "Descartar" }));
+  await waitFor(() => expect(imports.discard).toHaveBeenCalledWith("f1"));
+  await waitFor(() => {
+    const keys = invalidate.mock.calls.map((c) => (c[0] as { queryKey: unknown[] }).queryKey[0]);
+    expect(keys).toEqual(expect.arrayContaining(["imports", "products", "simulate"]));
+  });
 });

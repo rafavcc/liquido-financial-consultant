@@ -47,6 +47,8 @@ const settings: Settings = {
   prazo_min_meses_lca: 6,
   prazo_min_meses_lca_ipca: 12,
   prazo_min_meses_lcd: 12,
+  oferta_alerta_dias: 14,
+  oferta_expira_dias: 28,
 };
 
 function setup() {
@@ -334,4 +336,31 @@ test("LCD aparece entre os isentos de IR", async () => {
   setup();
   const ir = await screen.findByRole("group", { name: /IR/ });
   expect(within(ir).getByLabelText("LCD")).toBeInTheDocument();
+});
+
+test("seção Ofertas mostra 14 e 28 e salva o novo valor", async () => {
+  setup();
+  expect(await screen.findByRole("heading", { name: "Ofertas" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Alertar após (dias)")).toHaveValue("14");
+  const expira = screen.getByLabelText("Tirar do ranking após (dias)");
+  expect(expira).toHaveValue("28");
+  await userEvent.clear(expira);
+  await userEvent.type(expira, "30");
+  await userEvent.click(salvar());
+  await waitFor(() => expect(mocked.settings.update).toHaveBeenCalled());
+  expect(mocked.settings.update.mock.calls[0][0]).toEqual({ ...settings, oferta_expira_dias: 30 });
+});
+
+test("alerta maior ou igual à expiração é recusado localmente e erro do servidor é exibido", async () => {
+  setup();
+  const alerta = await screen.findByLabelText("Alertar após (dias)");
+  await userEvent.clear(alerta);
+  await userEvent.type(alerta, "40");
+  expect(screen.getByText("O alerta deve vir antes da expiração")).toBeInTheDocument();
+  await userEvent.clear(alerta);
+  await userEvent.type(alerta, "10");
+  mocked.settings.update.mockRejectedValue(new ApiError(422, ["o alerta de oferta antiga deve vir antes da expiração"]));
+  await userEvent.click(salvar());
+  const alert = await screen.findByRole("alert", { name: "Erros ao salvar" });
+  expect(within(alert).getByText("o alerta de oferta antiga deve vir antes da expiração")).toBeInTheDocument();
 });

@@ -40,6 +40,8 @@ export interface SettingsForm {
   ttl: string;
   fgc: string;
   prazos: PrazosForm;
+  ofertaAlerta: string;
+  ofertaExpira: string;
 }
 
 export function toForm(s: Settings): SettingsForm {
@@ -65,6 +67,8 @@ export function toForm(s: Settings): SettingsForm {
     ttl: String(s.market_cache_ttl_hours),
     fgc: decimalToBRLInput(s.fgc_limite),
     prazos: Object.fromEntries(PRAZOS.map((p) => [p.key, String(s[p.field])])) as PrazosForm,
+    ofertaAlerta: String(s.oferta_alerta_dias),
+    ofertaExpira: String(s.oferta_expira_dias),
   };
 }
 
@@ -142,6 +146,12 @@ export function buildSettings(f: SettingsForm, orig: Settings): BuildResult {
     prazos[p.field] = v ?? 0;
   }
 
+  const alerta = integer(f.ofertaAlerta);
+  const expira = integer(f.ofertaExpira);
+  if (alerta === null || alerta < 1) fail("oferta_alerta_dias", "Informe um número de dias inteiro, a partir de 1");
+  if (expira === null || expira < 1) fail("oferta_expira_dias", "Informe um número de dias inteiro, a partir de 1");
+  if (alerta !== null && expira !== null && alerta >= 1 && alerta >= expira) fail("oferta_alerta_dias", "O alerta deve vir antes da expiração");
+
   // Linhas manuais: só bloqueiam o salvamento no modo Manual; no Focus, as originais seguem intactas.
   const rowErrors: Record<string, string> = {};
   const selicMap: Record<string, string> = {};
@@ -185,6 +195,8 @@ export function buildSettings(f: SettingsForm, orig: Settings): BuildResult {
     market_cache_ttl_hours: ttl ?? 0,
     fgc_limite: fgc ?? "",
     ...prazos,
+    oferta_alerta_dias: alerta ?? 0,
+    oferta_expira_dias: expira ?? 0,
   };
   return { settings, errors };
 }
@@ -227,11 +239,13 @@ export function fieldLabel(path: string): string {
     case "prazo_min_meses_lca": return "Prazo mínimo da LCA";
     case "prazo_min_meses_lca_ipca": return "Prazo mínimo da LCA IPCA+";
     case "prazo_min_meses_lcd": return "Prazo mínimo da LCD";
+    case "oferta_alerta_dias": return "Alertar após (dias)";
+    case "oferta_expira_dias": return "Tirar do ranking após (dias)";
     default: return path;
   }
 }
 
-export type GrupoId = "tributacao" | "custos" | "projecoes" | "dados" | "alertas" | "prazos";
+export type GrupoId = "tributacao" | "custos" | "projecoes" | "dados" | "alertas" | "prazos" | "ofertas";
 
 export function fieldGroup(path: string): GrupoId | null {
   const head = path.split(".")[0];
@@ -241,11 +255,15 @@ export function fieldGroup(path: string): GrupoId | null {
   if (head === "market_cache_ttl_hours") return "dados";
   if (head === "fgc_limite") return "alertas";
   if (head.startsWith("prazo_min_meses_")) return "prazos";
+  if (head === "oferta_alerta_dias" || head === "oferta_expira_dias") return "ofertas";
   return null;
 }
 
 /** "campo.sub: mensagem" → { path, message }; mensagens sem campo ficam com path vazio. */
 export function parseServerError(raw: string): { path: string; message: string } {
   const m = /^([a-z_]+(?:\.[\w]+)*): (.*)$/s.exec(raw);
-  return m ? { path: m[1], message: m[2] } : { path: "", message: raw };
+  if (m) return { path: m[1], message: m[2] };
+  // Validação de Settings como um todo chega sem nome de campo.
+  if (/oferta antiga/.test(raw)) return { path: "oferta_alerta_dias", message: raw };
+  return { path: "", message: raw };
 }

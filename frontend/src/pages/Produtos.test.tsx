@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { api } from "../api/client";
-import type { ProductData } from "../api/types";
+import type { ProductView } from "../api/types";
 import { fixtureResponse, fixtureResult } from "../test/fixtures";
 import { Produtos } from "./Produtos";
 
@@ -18,9 +18,9 @@ vi.mock("../api/client", async (orig) => {
 });
 const mocked = vi.mocked(api, true);
 
-const cdb: ProductData = { ...fixtureResult.product, id: "p1" };
-const exemplo: ProductData = { ...cdb, id: "p2", nome: "LCI Exemplo", tipo: "LCI", exemplo: true, ativo: false };
-const tesouro: ProductData = {
+const cdb: ProductView = { ...fixtureResult.product, id: "p1", idade_dias: 3, expirada: false };
+const exemplo: ProductView = { ...cdb, id: "p2", idade_dias: null, nome: "LCI Exemplo", tipo: "LCI", exemplo: true, ativo: false };
+const tesouro: ProductView = {
   ...cdb, id: "t1", nome: "Tesouro Selic 2029", tipo: "TESOURO_SELIC", indexador: "SELIC", taxa: "0.0003", plataforma: "Tesouro Direto",
   data_vencimento: "2029-03-01", cobertura: "TESOURO",
 };
@@ -104,4 +104,45 @@ test("editar abre o formulário preenchido", async () => {
   const dialog = screen.getByRole("dialog", { name: "Editar produto" });
   expect(within(dialog).getByLabelText("Nome")).toHaveValue("CDB Banco Alfa");
   expect(within(dialog).getByLabelText("Taxa")).toHaveValue("112");
+});
+
+const velha: ProductView = { ...cdb, id: "p3", nome: "CDB Velho", idade_dias: 40, expirada: true };
+
+test("mostra a idade da oferta: hoje, há 1 dia, há N dias", async () => {
+  mocked.products.list.mockResolvedValue([
+    { ...cdb, idade_dias: 0, nome: "A" }, { ...cdb, id: "q2", idade_dias: 1, nome: "B" }, { ...cdb, id: "q3", idade_dias: 3, nome: "C" },
+  ]);
+  setup();
+  await screen.findByText("C");
+  expect(screen.getByText(/· hoje/)).toBeInTheDocument();
+  expect(screen.getByText(/· há 1 dia/)).toBeInTheDocument();
+  expect(screen.getByText(/· há 3 dias/)).toBeInTheDocument();
+});
+
+test("expirada vai para o fim, em cinza, com selo; o filtro Mostrar expiradas a esconde", async () => {
+  mocked.products.list.mockResolvedValue([velha, cdb]);
+  const user = userEvent.setup();
+  setup();
+  await screen.findByText("CDB Banco Alfa");
+  const sec = screen.getByRole("region", { name: "Meus produtos" });
+  const itens = within(sec).getAllByRole("listitem");
+  expect(itens[0]).toHaveTextContent("CDB Banco Alfa");
+  expect(itens[1]).toHaveTextContent("CDB Velho");
+  expect(within(itens[1]).getByText("expirada")).toBeInTheDocument();
+  expect(itens[1].className).toMatch(/opacity|grayscale/);
+  const filtro = screen.getByRole("checkbox", { name: "Mostrar expiradas" });
+  expect(filtro).toBeChecked();
+  await user.click(filtro);
+  expect(screen.queryByText("CDB Velho")).toBeNull();
+  expect(screen.getByText("CDB Banco Alfa")).toBeInTheDocument();
+});
+
+test("editar produto envia disponivel_ate e mostra Registrado em", async () => {
+  mocked.products.list.mockResolvedValue([{ ...cdb, data_registro: "2026-11-20", disponivel_ate: "2026-12-10" }]);
+  const user = userEvent.setup();
+  setup();
+  await user.click(await screen.findByRole("button", { name: "Editar CDB Banco Alfa" }));
+  const dialog = screen.getByRole("dialog", { name: "Editar produto" });
+  expect(within(dialog).getByLabelText("Disponível até")).toHaveValue("2026-12-10");
+  expect(within(dialog).getByText("Registrado em 20/11/2026")).toBeInTheDocument();
 });

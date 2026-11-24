@@ -502,6 +502,16 @@ export function Configuracoes() {
         </div>
       </Group>
 
+      <Group id="ofertas" title="Ofertas" localInvalid={localIn("ofertas")} errors={server}
+        help="Ofertas importadas de prints envelhecem: depois de alguns dias ganham um alerta e, mais tarde, saem do ranking até serem renovadas.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Box label="Alertar após (dias)" suffix="dias" inputMode="numeric" value={form.ofertaAlerta} error={err("oferta_alerta_dias")}
+            onChange={(v) => edit({ ofertaAlerta: v })} hint="Mostra o alerta Oferta antiga." />
+          <Box label="Tirar do ranking após (dias)" suffix="dias" inputMode="numeric" value={form.ofertaExpira} error={err("oferta_expira_dias")}
+            onChange={(v) => edit({ ofertaExpira: v })} hint="A oferta continua na lista, marcada como expirada." />
+        </div>
+      </Group>
+
       {dirty && (
         <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:sticky sm:bottom-4 sm:rounded-2xl sm:border sm:shadow-card">
           <p className="text-xs text-muted sm:text-sm"><span className="font-medium text-ink">Você tem alterações não salvas.</span></p>

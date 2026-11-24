@@ -1,12 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { api, ApiError, printUrl } from "../api/client";
-import type { ImportBatchView, ImportItemView } from "../api/types";
+import type { ImportBatchView, ImportFailureView, ImportItemView, ProductData, ProductType } from "../api/types";
+import { ProductForm } from "../components/ProductForm";
 import { formatDateTime } from "../lib/format";
 
 const POLL_MS = 3000;
 const HISTORICO = 5;
 const ACCEPT = "image/png,image/jpeg,image/webp";
+
+const TIPOS_VALIDOS: ProductType[] = ["CDB", "LCI", "LCA", "LCD", "CRI", "CRA", "FUNDO_RF"];
+
+/** Valores iniciais do formulário: o interpretado quando houver; senão só o que o raw traz sem conversão. */
+function prefill(f: ImportFailureView): Partial<ProductData> {
+  const interpretado = f.parcial.interpretado;
+  if (interpretado && Object.keys(interpretado).length > 0) return interpretado;
+  const raw = f.parcial.raw ?? {};
+  const out: Partial<ProductData> = {};
+  const tipo = typeof raw.tipo === "string" ? raw.tipo.toUpperCase() : "";
+  if (TIPOS_VALIDOS.includes(tipo as ProductType)) out.tipo = tipo as ProductType;
+  if (typeof raw.emissor === "string") out.emissor = raw.emissor;
+  if (typeof raw.nome_exibido === "string") out.nome = raw.nome_exibido;
+  return out;
+}
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
@@ -52,6 +68,34 @@ function ItemRow({ item, onRetry, retrying }: { item: ImportItemView; onRetry: (
   );
 }
 
+function FailureRow({ failure, onFix, onDiscard, busy }: { failure: ImportFailureView; onFix: () => void; onDiscard: () => void; busy: boolean }) {
+  return (
+    <li className="flex items-start gap-3 py-3">
+      {failure.print_id && (
+        <a href={printUrl(failure.print_id)} target="_blank" rel="noreferrer" className="shrink-0">
+          <img src={printUrl(failure.print_id)} alt="" loading="lazy" className="h-16 w-16 rounded-lg border border-line object-cover" />
+        </a>
+      )}
+      <div className="min-w-0 flex-1 text-sm">
+        {failure.nome_arquivo && <div className="truncate font-medium">{failure.nome_arquivo}</div>}
+        <ul className="mt-0.5 list-disc pl-5 text-warn">
+          {failure.erros.map((e) => (
+            <li key={e}>{e}</li>
+          ))}
+        </ul>
+        <div className="mt-2 flex gap-2">
+          <button type="button" onClick={onFix} className="rounded-lg bg-accent px-3 py-1 text-xs font-semibold text-accent-fg hover:opacity-90">
+            Corrigir
+          </button>
+          <button type="button" disabled={busy} onClick={onDiscard} className="rounded-lg border border-line px-3 py-1 text-xs font-medium hover:bg-subtle disabled:opacity-50">
+            Descartar
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 function Batch({ batch, onRetry, retrying }: { batch: ImportBatchView; onRetry: (id: string) => void; retrying: boolean }) {
   const feitos = batch.itens.length - batch.pendentes;
   return (
@@ -83,6 +127,17 @@ export function Importar() {
     queryKey: ["imports", "list"],
     queryFn: api.imports.list,
     refetchInterval: (q) => (q.state.data?.some((b) => b.pendentes > 0) ? POLL_MS : false),
+  });
+
+  const falhas = useQuery({ queryKey: ["imports", "failures"], queryFn: () => api.imports.failures() });
+  const [corrigindo, setCorrigindo] = useState<ImportFailureView | null>(null);
+  const refreshAfterFailure = () => {
+    for (const k of ["imports", "products", "simulate"]) void qc.invalidateQueries({ queryKey: [k] });
+  };
+  const discard = useMutation({
+    mutationFn: api.imports.discard,
+    onSuccess: () => { setErro(null); refreshAfterFailure(); },
+    onError: (e) => setErro(e instanceof ApiError ? e.messages.join(" · ") : "Falha ao descartar."),
   });
 
   const pendentes = (lotes.data ?? []).reduce((n, b) => n + b.pendentes, 0);
@@ -187,6 +242,18 @@ export function Importar() {
         </div>
       )}
 
+      {falhas.data && falhas.data.length > 0 && (
+        <section aria-label="Falhas" className="rounded-2xl border border-line bg-surface p-4 shadow-card">
+          <h2 className="text-sm font-semibold">Falhas ({falhas.data.length})</h2>
+          <p className="mt-0.5 text-xs text-muted">Ofertas que a leitura não conseguiu cadastrar. Corrija olhando o print ou descarte.</p>
+          <ul className="mt-2 divide-y divide-line">
+            {falhas.data.map((f) => (
+              <FailureRow key={f.id} failure={f} busy={discard.isPending} onFix={() => setCorrigindo(f)} onDiscard={() => discard.mutate(f.id)} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {lotes.isError && <p className="text-sm text-neg">Não foi possível carregar os lotes.</p>}
       {lotes.data && lotes.data.length === 0 && <p className="py-8 text-center text-sm text-muted">Nenhum lote importado ainda.</p>}
       <div className="space-y-3">
@@ -194,6 +261,20 @@ export function Importar() {
           <Batch key={b.id} batch={b} onRetry={(id) => retry.mutate(id)} retrying={retry.isPending} />
         ))}
       </div>
+      {corrigindo && (
+        <ProductForm
+          key={corrigindo.id}
+          open
+          initial={prefill(corrigindo)}
+          printId={corrigindo.print_id ?? undefined}
+          onSubmitOverride={async (p) => {
+            const criado = await api.imports.resolve(corrigindo.id, p);
+            void qc.invalidateQueries({ queryKey: ["imports"] });
+            return criado;
+          }}
+          onOpenChange={(o) => !o && setCorrigindo(null)}
+        />
+      )}
     </div>
   );
 }

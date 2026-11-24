@@ -2,7 +2,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { lazy, Suspense } from "react";
 import type { MarketSummary, ProductType, SimulationResult } from "../api/types";
 import { subtractMoney } from "../lib/money";
-import { formatBRL, formatDate, formatPct, formatPctSigned, isNegativePct } from "../lib/format";
+import { printUrl } from "../api/client";
+import { diasDesde, formatBRL, formatDate, formatPct, idadeLabel, formatPctSigned, isNegativePct } from "../lib/format";
 import { ALERT_META, indexLabel, isIsento, resgateLabel, tipoLabel } from "../lib/labels";
 import { TONE } from "./AlertBadge";
 
@@ -199,6 +200,21 @@ export function ProductDetail({ result: r, mercado, isentoTypes, open, onOpenCha
                 {r.dias_parado > 0 && <InfoRow label="Dias parados" value={String(r.dias_parado)} />}
               </dl>
             </section>
+
+            {(p.data_registro || p.disponivel_ate || p.print_id) && (
+              <section aria-label="Oferta">
+                <H>Oferta</H>
+                <div className="space-y-1 text-sm">
+                  {p.data_registro && <p>{`Registrado em ${formatDate(p.data_registro)} (${idadeLabel(diasDesde(p.data_registro))})`}</p>}
+                  {p.disponivel_ate && <p>{`Disponível até ${formatDate(p.disponivel_ate)}`}</p>}
+                  {p.print_id && (
+                    <a href={printUrl(p.print_id)} target="_blank" rel="noreferrer" className="inline-block font-medium text-accent underline">
+                      Ver print
+                    </a>
+                  )}
+                </div>
+              </section>
+            )}
 
             <section aria-label="Premissas">
               <H>Premissas</H>

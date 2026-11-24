@@ -201,7 +201,7 @@ test("edição sem alterar nada reenvia todos os campos idênticos (inclui valor
     id: "abc", tipo: original.tipo, nome: original.nome, emissor: "Banco Z", plataforma: "BTG Pactual",
     indexador: original.indexador, taxa: "1.125", data_vencimento: "2029-05-10", valor_minimo: "1000.505",
     liquidez: "DIARIA_APOS_CARENCIA", data_carencia: "2027-06-01", cobertura: "FGC", ativo: true, exemplo: false,
-    observacoes: "nota", taxa_adm: null, prazo_resgate_dias: null, classe_tributaria: null,
+    observacoes: "nota", taxa_adm: null, prazo_resgate_dias: null, classe_tributaria: null, disponivel_ate: null,
   });
 });
 
@@ -219,7 +219,7 @@ test("edição de fundo sem alterar nada reenvia campos do fundo idênticos", as
     id: "f1", tipo: "FUNDO_RF", nome: "Fundo X", emissor: fundo.emissor, plataforma: fundo.plataforma,
     indexador: fundo.indexador, taxa: "1.05", data_vencimento: null, valor_minimo: "500", liquidez: "DIARIA",
     data_carencia: null, cobertura: "NENHUMA", ativo: true, exemplo: false, observacoes: fundo.observacoes,
-    taxa_adm: "0.003", prazo_resgate_dias: 30, classe_tributaria: "CURTO",
+    taxa_adm: "0.003", prazo_resgate_dias: 30, classe_tributaria: "CURTO", disponivel_ate: null,
   });
 });
 

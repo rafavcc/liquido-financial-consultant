@@ -13,7 +13,7 @@ export type Section = "VENCE_ATE_DATA" | "VENCE_DEPOIS" | "INDISPONIVEL";
 export type AlertCode =
   | "PROJECAO" | "FGC_LIMITE" | "SEM_FGC" | "ESTIMATIVA_MERCADO" | "FUNDO_SEM_GARANTIA"
   | "PARADO" | "EXEMPLO" | "MODELO_SIMPLIFICADO" | "ABAIXO_MINIMO" | "NAO_RESGATAVEL"
-  | "SEM_DADOS_MERCADO" | "RESGATE_DN" | "ERRO_CALCULO" | "VENCIDO";
+  | "SEM_DADOS_MERCADO" | "RESGATE_DN" | "ERRO_CALCULO" | "VENCIDO" | "OFERTA_ANTIGA" | "IMPORTADO_IA";
 
 export interface ProductData {
   id: string;
@@ -34,6 +34,17 @@ export interface ProductData {
   taxa_adm: Decimal | null;
   prazo_resgate_dias: number | null;
   classe_tributaria: "LONGO" | "CURTO" | null;
+  data_registro: string | null;
+  disponivel_ate: string | null;
+  origem: "MANUAL" | "IA";
+  print_id: string | null;
+  juros_periodicos: "MENSAL" | "TRIMESTRAL" | "SEMESTRAL" | "ANUAL" | null;
+  amortizacao: { periodicidade: string; inicio: string | null } | null;
+}
+
+export interface ProductView extends ProductData {
+  idade_dias: number | null;
+  expirada: boolean;
 }
 
 export interface Alert {
@@ -122,6 +133,8 @@ export interface Settings {
   prazo_min_meses_lca: number;
   prazo_min_meses_lca_ipca: number;
   prazo_min_meses_lcd: number;
+  oferta_alerta_dias: number;
+  oferta_expira_dias: number;
 }
 
 export interface ImportStatus {
@@ -162,6 +175,6 @@ export interface ImportFailureView {
   print_id: string | null;
   nome_arquivo: string | null;
   erros: string[];
-  parcial: Record<string, unknown>;
+  parcial: { raw?: Record<string, unknown>; interpretado?: Partial<ProductData> };
   status: string;
 }

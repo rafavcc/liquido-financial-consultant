@@ -24,3 +24,10 @@ test("percentuais negativos e com sinal", () => {
   expect(isNegativePct("-0.00001")).toBe(false);
   expect(isNegativePct("0.01")).toBe(false);
 });
+
+test("idadeLabel: hoje, há 1 dia, há N dias", async () => {
+  const { idadeLabel } = await import("./format");
+  expect(idadeLabel(0)).toBe("hoje");
+  expect(idadeLabel(1)).toBe("há 1 dia");
+  expect(idadeLabel(3)).toBe("há 3 dias");
+});

@@ -6,6 +6,7 @@ export const fixtureResult: SimulationResult = {
     indexador: "PCT_CDI", taxa: "1.12", data_vencimento: "2028-11-15", valor_minimo: "1000",
     liquidez: "NO_VENCIMENTO", data_carencia: null, cobertura: "FGC", ativo: true, exemplo: false,
     observacoes: "", taxa_adm: null, prazo_resgate_dias: null, classe_tributaria: null,
+    data_registro: null, disponivel_ate: null, origem: "MANUAL", print_id: null, juros_periodicos: null, amortizacao: null,
   },
   secao: "VENCE_ATE_DATA", resgatavel: true, estimativa_mercado: false, data_saida: "2028-11-16",
   dias_parado: 0, valor_investido: "50000", sobra: "0", valor_bruto: "74000.5", iof: "0.00", ir: "3000",
