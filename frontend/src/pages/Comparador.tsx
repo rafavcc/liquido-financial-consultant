@@ -1,22 +1,36 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api/client";
-import type { ProductType, SimulationResult } from "../api/types";
+import type { Horizonte, ProductType, SimulationResult } from "../api/types";
 import { EMPTY_FILTERS, Filters, type FilterState } from "../components/Filters";
 import { IconChevron } from "../components/Icons";
 import { InputsBar } from "../components/InputsBar";
+import { SortSelect } from "../components/SortSelect";
 import { MarketStrip } from "../components/MarketStrip";
 import { ProductCard } from "../components/ProductCard";
 import { ProductDetail } from "../components/ProductDetail";
 import { SectionHeader } from "../components/SectionHeader";
 import { formatDate, maskBRL } from "../lib/format";
-import { ISENTOS_PADRAO, isIsento, tipoGrupo } from "../lib/labels";
+import { HORIZONTES, ISENTOS_PADRAO, isIsento, ORDENACOES, tipoGrupo } from "../lib/labels";
+import { dominados, ordenar, type Ordenacao } from "../lib/ordering";
 import { parseBRL } from "../lib/parse";
 import { readStore, writeStore } from "../lib/storage";
 import { useDebounced } from "../lib/useDebounced";
 
 const K_VALOR = "liquido.valor";
 const K_DATA = "liquido.dataAlvo";
+const K_HORIZONTE = "liquido.horizonte";
+const K_ORDENACAO = "liquido.ordenacao";
+
+function readHorizonte(): Horizonte {
+  const v = readStore(K_HORIZONTE);
+  return HORIZONTES.some((h) => h.id === v) ? (v as Horizonte) : "DATA";
+}
+function readOrdenacao(h: Horizonte): Ordenacao {
+  const v = readStore(K_ORDENACAO);
+  const o: Ordenacao = ORDENACOES.some((x) => x.id === v) ? (v as Ordenacao) : "VALOR_LIQUIDO";
+  return h === "SEM_DATA" && o === "VALOR_LIQUIDO" ? "TAXA" : o;
+}
 
 function isoDate(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -47,6 +61,8 @@ export function Comparador() {
   const qc = useQueryClient();
   const [valor, setValor] = useState(() => readStore(K_VALOR) ?? "50.000");
   const [dataAlvo, setDataAlvo] = useState(() => readStore(K_DATA) ?? isoDate(addDays(new Date(), 365 * 3)));
+  const [horizonte, setHorizonteState] = useState<Horizonte>(readHorizonte);
+  const [ordenacao, setOrdenacaoState] = useState<Ordenacao>(() => readOrdenacao(readHorizonte()));
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [showOff, setShowOff] = useState(false);
   const [selected, setSelected] = useState<SimulationResult | null>(null);
@@ -57,11 +73,25 @@ export function Comparador() {
   const dData = useDebounced(dataAlvo, 400);
 
   const valorNum = parseBRL(dValor);
-  const valido = valorNum !== null && Number(valorNum) > 0 && dData > hoje;
+  const semData = horizonte === "SEM_DATA";
+  const valido = valorNum !== null && Number(valorNum) > 0 && (horizonte !== "DATA" || dData > hoje);
+
+  const setHorizonte = (h: Horizonte) => {
+    setHorizonteState(h);
+    writeStore(K_HORIZONTE, h);
+    if (h === "SEM_DATA" && ordenacao === "VALOR_LIQUIDO") {
+      setOrdenacaoState("TAXA");
+      writeStore(K_ORDENACAO, "TAXA");
+    }
+  };
+  const setOrdenacao = (o: Ordenacao) => {
+    setOrdenacaoState(o);
+    writeStore(K_ORDENACAO, o);
+  };
 
   const sim = useQuery({
-    queryKey: ["simulate", valorNum, dData],
-    queryFn: ({ signal }) => api.simulate(valorNum as string, "DATA", dData, signal),
+    queryKey: ["simulate", valorNum, horizonte, horizonte === "DATA" ? dData : null],
+    queryFn: ({ signal }) => api.simulate(valorNum as string, horizonte, horizonte === "DATA" ? dData : null, signal),
     enabled: valido,
     placeholderData: keepPreviousData,
     retry: false,
@@ -100,19 +130,23 @@ export function Comparador() {
     }
   }, [data, plataformas, filters.plataforma]);
 
-  const verdes = useMemo(() => applyFilters(data?.vence_ate_data ?? [], filters, isentos), [data, filters, isentos]);
-  const vermelhos = useMemo(() => applyFilters(data?.vence_depois ?? [], filters, isentos), [data, filters, isentos]);
-  const cinzas = useMemo(() => applyFilters(data?.indisponiveis ?? [], filters, isentos), [data, filters, isentos]);
-
+  const secao = (list: SimulationResult[] | undefined) => {
+    const filtrada = applyFilters(list ?? [], filters, isentos);
+    return { dom: dominados(filtrada), lista: ordenar(filtrada, ordenacao) };
+  };
+  const verdes = useMemo(() => secao(data?.vence_ate_data), [data, filters, isentos, ordenacao]); // eslint-disable-line react-hooks/exhaustive-deps
+  const vermelhos = useMemo(() => secao(data?.vence_depois), [data, filters, isentos, ordenacao]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cinzas = useMemo(() => secao(data?.indisponiveis), [data, filters, isentos, ordenacao]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const erroValidacao =
     valorNum === null || Number(valorNum) <= 0
       ? "Informe um valor maior que zero."
-      : dData <= hoje
+      : horizonte === "DATA" && dData <= hoje
         ? "A data deve ser posterior a hoje."
         : null;
   const erroApi = sim.error instanceof ApiError ? sim.error.messages : sim.error ? ["Erro inesperado ao simular."] : [];
-  const fmtAlvo = formatDate(dData);
+  const alvo = data?.data_alvo ?? (horizonte === "DATA" ? dData : null);
+  const fmtAlvo = alvo ? formatDate(alvo) : "";
 
   return (
     <div className="space-y-5">
@@ -127,6 +161,9 @@ export function Comparador() {
           setValor(m);
           writeStore(K_VALOR, m);
         }}
+        horizonte={horizonte}
+        onHorizonte={setHorizonte}
+        dataResolvida={data?.data_alvo ?? null}
         onData={(d) => {
           setDataAlvo(d);
           if (d) writeStore(K_DATA, d);
@@ -149,54 +186,79 @@ export function Comparador() {
         </div>
       )}
 
-      <Filters value={filters} plataformas={plataformas} onChange={setFilters} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Filters value={filters} plataformas={plataformas} onChange={setFilters} />
+        <SortSelect value={ordenacao} onChange={setOrdenacao} semData={semData} />
+      </div>
 
       {sim.isPending && valido && <p className="py-10 text-center text-sm text-muted">Calculando…</p>}
 
       {data && (
         <div className={`space-y-8 transition-opacity ${sim.isFetching ? "opacity-60" : ""}`}>
+          {semData ? (
+            <section aria-label="Todos os produtos">
+              <SectionHeader
+                tone="pos"
+                title="Todos os produtos — até o vencimento ou 1 ano"
+                count={verdes.lista.length}
+                hint="Taxa líquida a.a. de cada produto no seu prazo de saída"
+              />
+              {verdes.lista.length === 0 ? (
+                <Empty>Nada nesta seção com esses filtros.</Empty>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {verdes.lista.map((r, i) => (
+                    <ProductCard key={r.product.id} result={r} rank={i + 1} destaque="taxa" dominado={verdes.dom.has(r.product.id)} hoje={hoje} onSelect={setSelected} isentoTypes={isentos} />
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : (
           <section aria-label="Vencem até a sua data">
             <SectionHeader
               tone="pos"
               title="✅ Vencem até a sua data"
-              count={verdes.length}
-              hint={`Líquido em ${fmtAlvo}, do melhor para o pior`}
+              count={verdes.lista.length}
+              hint={`Líquido em ${fmtAlvo}, ${ordenacao === "VALOR_LIQUIDO" ? "do melhor para o pior" : "na ordem escolhida"}`}
             />
-            {verdes.length === 0 ? (
+            {verdes.lista.length === 0 ? (
               <Empty>Nenhum produto vence até {fmtAlvo} com esses filtros.</Empty>
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
-                {verdes.map((r, i) => (
-                  <ProductCard key={r.product.id} result={r} rank={i + 1} onSelect={setSelected} isentoTypes={isentos} />
+                {verdes.lista.map((r, i) => (
+                  <ProductCard key={r.product.id} result={r} rank={i + 1} dominado={verdes.dom.has(r.product.id)} hoje={hoje} onSelect={setSelected} isentoTypes={isentos} />
                 ))}
               </div>
             )}
           </section>
+          )}
 
+          {!semData && (
           <section aria-label="Vencem depois da sua data">
             <SectionHeader
               tone="neg"
               title="🔴 Vencem depois da sua data"
-              count={vermelhos.length}
+              count={vermelhos.lista.length}
               hint="Exigem venda antecipada ou não podem ser resgatados na data"
             />
-            {vermelhos.length === 0 ? (
+            {vermelhos.lista.length === 0 ? (
               <Empty>Nada nesta seção com esses filtros.</Empty>
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
-                {vermelhos.map((r) => (
-                  <ProductCard key={r.product.id} result={r} onSelect={setSelected} isentoTypes={isentos} />
+                {vermelhos.lista.map((r) => (
+                  <ProductCard key={r.product.id} result={r} dominado={vermelhos.dom.has(r.product.id)} hoje={hoje} onSelect={setSelected} isentoTypes={isentos} />
                 ))}
               </div>
             )}
           </section>
+          )}
 
-          {cinzas.length > 0 && (
+          {cinzas.lista.length > 0 && (
             <section aria-label="Indisponíveis para este valor">
               <SectionHeader
                 tone="off"
                 title="Indisponíveis para este valor"
-                count={cinzas.length}
+                count={cinzas.lista.length}
                 action={
                   <button
                     type="button"
@@ -211,8 +273,8 @@ export function Comparador() {
               />
               {showOff && (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {cinzas.map((r) => (
-                    <ProductCard key={r.product.id} result={r} onSelect={setSelected} isentoTypes={isentos} />
+                  {cinzas.lista.map((r) => (
+                    <ProductCard key={r.product.id} result={r} dominado={false} hoje={hoje} onSelect={setSelected} isentoTypes={isentos} />
                   ))}
                 </div>
               )}

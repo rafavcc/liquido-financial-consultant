@@ -3,7 +3,18 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Comparador } from "./Comparador";
 import { api } from "../api/client";
-import { fixtureResponse } from "../test/fixtures";
+import { fixtureResponse, fixtureResult } from "../test/fixtures";
+
+const mk = (id: string, nome: string, taxa: string, tipo: "CDB" | "LCI" = "CDB") => ({
+  ...fixtureResult,
+  product: { ...fixtureResult.product, id, nome, tipo },
+  taxa_liquida_aa: taxa,
+  valor_liquido: String(50000 * (1 + Number(taxa))),
+});
+const baixa = mk("baixa", "CDB Baixa", "0.10");
+const alta = mk("alta", "CDB Alta", "0.14");
+const cdb = mk("cdb-dom", "CDB Dominante", "0.13");
+const lci = mk("lci-dom", "LCI Dominada", "0.11", "LCI");
 
 vi.mock("../api/client", async (orig) => {
   const real = await orig<typeof import("../api/client")>();
@@ -58,4 +69,38 @@ test("clicar no card abre o detalhe e Escape fecha", async () => {
   expect(await screen.findByRole("dialog", { name: "CDB Banco Alfa" })).toBeInTheDocument();
   await userEvent.keyboard("{Escape}");
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+test("sem data: esconde a data, chama a API com SEM_DATA e ordena por taxa", async () => {
+  mocked.simulate.mockResolvedValue({ ...fixtureResponse, horizonte: "SEM_DATA", data_alvo: null, vence_ate_data: [baixa, alta] });
+  setup();
+  await userEvent.click(await screen.findByRole("radio", { name: "Sem data" }));
+  expect(screen.queryByLabelText("Preciso do dinheiro em")).toBeNull();
+  await waitFor(() => expect(mocked.simulate).toHaveBeenLastCalledWith(expect.any(String), "SEM_DATA", null, expect.anything()));
+  expect((screen.getByLabelText("Ordenar por") as HTMLSelectElement).value).toBe("TAXA");
+  const titulos = (await screen.findAllByRole("article")).map((a) => a.querySelector("h3")?.textContent);
+  expect(titulos).toEqual([alta.product.nome, baixa.product.nome]);
+});
+
+test("1 ano mostra a data resolvida pelo backend", async () => {
+  mocked.simulate.mockResolvedValue({ ...fixtureResponse, horizonte: "UM_ANO", data_alvo: "2027-11-19" });
+  setup();
+  await userEvent.click(await screen.findByRole("radio", { name: "1 ano" }));
+  expect(await screen.findByText(/Resgate em 19\/11\/2027/)).toBeInTheDocument();
+});
+
+test("selo de dominado respeita o filtro", async () => {
+  mocked.simulate.mockResolvedValue({ ...fixtureResponse, vence_ate_data: [cdb, lci] });
+  setup();
+  expect(await screen.findByText("Há opção melhor e mais curta")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Só isentos" }));
+  expect(screen.queryByText("Há opção melhor e mais curta")).toBeNull();
+});
+
+test("localStorage inválido cai no padrão", async () => {
+  localStorage.setItem("liquido.horizonte", "XYZ");
+  localStorage.setItem("liquido.ordenacao", "ABC");
+  setup();
+  expect(await screen.findByRole("radio", { name: "Escolher data" })).toHaveAttribute("aria-checked", "true");
+  expect((screen.getByLabelText("Ordenar por") as HTMLSelectElement).value).toBe("VALOR_LIQUIDO");
 });

@@ -56,3 +56,15 @@ test("produto vencido mostra a mensagem com a data na seção de indisponíveis"
   render(<ProductCard result={vencido} />);
   expect(screen.getByText(/Produto vencido em 10\/11\/2026 — atualize ou exclua/)).toBeInTheDocument();
 });
+
+test("destaque taxa mostra taxa grande, valor e data de saída", () => {
+  render(<ProductCard result={{ ...fixtureResult, valor_liquido: "71840.10" }} destaque="taxa" />);
+  expect(screen.getByText("11,80% a.a.")).toBeInTheDocument();
+  expect(screen.getByText("R$ 71.840,10 em 16/11/2028")).toBeInTheDocument();
+});
+
+test("dominado mostra o selo e o prazo de saída aparece", () => {
+  render(<ProductCard result={fixtureResult} dominado hoje="2026-11-24" />);
+  expect(screen.getByText("Há opção melhor e mais curta")).toBeInTheDocument();
+  expect(screen.getByText("Preso até 15/11/2028")).toBeInTheDocument();
+});

@@ -1,4 +1,6 @@
-import { maskBRL } from "../lib/format";
+import type { Horizonte } from "../api/types";
+import { formatDate, maskBRL } from "../lib/format";
+import { HORIZONTES } from "../lib/labels";
 
 interface Props {
   valor: string;
@@ -6,13 +8,16 @@ interface Props {
   minDate: string;
   onValor: (v: string) => void;
   onData: (d: string) => void;
+  horizonte: Horizonte;
+  onHorizonte: (h: Horizonte) => void;
+  dataResolvida: string | null;
 }
 
 const label = "mb-1 block text-xs font-medium text-muted";
 const field =
   "w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-base font-semibold shadow-card transition placeholder:font-normal placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
 
-export function InputsBar({ valor, dataAlvo, minDate, onValor, onData }: Props) {
+export function InputsBar({ valor, dataAlvo, minDate, onValor, onData, horizonte, onHorizonte, dataResolvida }: Props) {
   return (
     <section aria-label="Simulação" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
@@ -31,15 +36,45 @@ export function InputsBar({ valor, dataAlvo, minDate, onValor, onData }: Props) 
         </div>
       </div>
       <div>
-        <label htmlFor="data-alvo" className={label}>Preciso do dinheiro em</label>
-        <input
-          id="data-alvo"
-          type="date"
-          min={minDate}
-          value={dataAlvo}
-          onChange={(e) => onData(e.target.value)}
-          className={field}
-        />
+        <span id="horizonte-label" className={label}>Horizonte</span>
+        <div role="radiogroup" aria-label="Horizonte" className="mb-2 flex flex-wrap gap-1.5">
+          {HORIZONTES.map((h) => {
+            const on = h.id === horizonte;
+            return (
+              <button
+                key={h.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => onHorizonte(h.id)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                  on ? "border-accent bg-accent text-accent-fg" : "border-line bg-surface text-muted hover:text-ink"
+                }`}
+              >
+                {h.label}
+              </button>
+            );
+          })}
+        </div>
+        {horizonte === "DATA" && (
+          <>
+            <label htmlFor="data-alvo" className={label}>Preciso do dinheiro em</label>
+            <input
+              id="data-alvo"
+              type="date"
+              min={minDate}
+              value={dataAlvo}
+              onChange={(e) => onData(e.target.value)}
+              className={field}
+            />
+          </>
+        )}
+        {(horizonte === "UM_ANO" || horizonte === "DOIS_ANOS") && dataResolvida && (
+          <p className="text-sm text-muted">Resgate em {formatDate(dataResolvida)}</p>
+        )}
+        {horizonte === "SEM_DATA" && (
+          <p className="text-sm text-muted">Cada produto até o vencimento (ou 1 ano, se tiver liquidez diária)</p>
+        )}
       </div>
     </section>
   );
