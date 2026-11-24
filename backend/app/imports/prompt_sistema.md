@@ -14,7 +14,9 @@ e do Nubank. Responda **somente** com o JSON pedido, sem texto antes ou depois.
 - `tipo`: CDB, LCI, LCA, LCD, CRI, CRA, FUNDO_RF (fundo de renda fixa), TESOURO (Tesouro Direto) ou
   OUTRO (LF, CDCA, CPR, debênture, fundo multimercado e qualquer outra coisa). O tipo costuma ser o
   começo do nome ("LCI CEF - NOV/2028", "CRA - ARMAC", "LCI - Pós-fixado").
-- `emissor`: o banco ou empresa que emite, como aparece (no Nubank, a linha "Emissor").
+- `emissor`: o banco ou empresa que emite, como aparece (no Nubank, a linha "Emissor"). Em tabelas
+  da XP e do BTG o emissor está no próprio nome: "LCA ORIGINAL - ABR/2030" → "ORIGINAL",
+  "CRA - ARMAC" → "ARMAC".
 - `nome_exibido`: o título da oferta como aparece, se houver.
 - `taxas`: **somente valores de rentabilidade** — percentuais de retorno. Para cada um:
   `rotulo` = o texto que o identifica (em tabelas, o **cabeçalho da coluna**, ex.: "Taxa",
@@ -34,8 +36,8 @@ e do Nubank. Responda **somente** com o JSON pedido, sem texto antes ou depois.
 - `codigo`: código do papel, se aparecer (ex.: "CRA0240066D", "22L2288690").
 - `juros`: pagamento de juros como aparece ("Mensal", "Semestral", "No vencimento"); "-" se for "-".
 - `amortizacao`: como aparece ("No Vencimento", "Anual a partir de 15/03/2032").
-- `cortada`: `true` se o cartão ou linha está cortado na borda do print e faltam a taxa ou o vencimento.
-  Nesse caso preencha só o que dá para ler.
+- `cortada`: `true` **só** se o cartão ou linha está cortado na borda do print e faltam a taxa ou o
+  vencimento. Nome abreviado com "..." **não** é cortada. Na dúvida, `false`.
 
 ## Telas que não são ofertas
 
@@ -43,6 +45,11 @@ Telas de carteira/posição do usuário ("Meu saldo", "Rendimento bruto", botão
 ofertas: responda com `"ofertas": []`.
 
 ## Como reconhecer a plataforma (`plataforma`: XP, BTG, NUBANK ou DESCONHECIDA)
+
+Primeiro preencha `indicios` com os textos e elementos que você vê e que identificam a plataforma
+(logo, nomes de abas, cabeçalhos de colunas, selos, cores). Depois escolha `plataforma` de acordo com
+eles. Todo print que você recebe é de XP, BTG ou Nubank: use DESCONHECIDA só se nada abaixo bater.
+
 
 - **XP (app)**: tema escuro, botões amarelos "Saiba mais" e "Investir"; cartões com título em
   maiúsculas ("CDB BANCO XP S.A. - NOV/2028") e linhas "Rentabilidade", "Aplicação mínima", "Resgate",
@@ -60,4 +67,4 @@ ofertas: responda com `"ofertas": []`.
 - **Nubank (só app)**: tema escuro com roxo; "Investimentos Ultravioleta"; selos "CDI (Pós-fixado)",
   "Exclusivo Ultravioleta", "Risco baixo", "Proteção FGC", "IR · 15%"; a linha principal junta taxa e
   vencimento ("109% do CDI · 18 NOV 2031"); linhas "Emissor" e "Valor mínimo".
-- Sem certeza → DESCONHECIDA.
+- Nada disso visível → DESCONHECIDA.

@@ -16,7 +16,7 @@ from pathlib import Path
 import httpx
 
 from app.domain.settings import Settings
-from app.imports.interpret import Created, interpret_offer
+from app.imports.interpret import Created, interpret_offer, resolve_platform
 from app.imports.llm import LlmConfig, OpenAICompatClient
 from app.imports.schema import RawExtraction
 from app.imports.service import detect_mime
@@ -59,9 +59,9 @@ def _expected_fields(e: dict) -> dict[str, str]:
 
 def interpreted(raw: RawExtraction, settings: Settings, today: date) -> list:
     """ProductData das ofertas que o interpretador aceita (cortadas, ignoradas e falhas ficam de fora)."""
-    out = []
+    out, plataforma = [], resolve_platform(raw)
     for offer in raw.ofertas:
-        r = interpret_offer(offer, raw.plataforma, settings, today)
+        r = interpret_offer(offer, plataforma, settings, today)
         if isinstance(r, Created):
             out.append(r.data)
     return out

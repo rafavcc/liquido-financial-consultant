@@ -18,7 +18,7 @@ from app.imports.parsing import (
     parse_periodicidade,
     plain,
 )
-from app.imports.schema import RawOffer
+from app.imports.schema import RawExtraction, RawOffer
 from app.imports.selection import RateAmbiguous, choose_rate
 
 PLATAFORMAS = {"XP": "XP", "BTG": "BTG", "NUBANK": "Nubank"}
@@ -26,6 +26,18 @@ _SUPPORTED = {
     ProductType.CDB, ProductType.LCI, ProductType.LCA, ProductType.LCD,
     ProductType.CRI, ProductType.CRA,
 }
+# Pistas inequívocas de cada plataforma (texto sem acento, minúsculo), vindas dos prints reais.
+_PISTAS = {
+    "NUBANK": ("ultravioleta", "nubank", "nu invest"),
+    "BTG": ("taxa eq. do cdb", "taxa eq. cdb", "produto e risco", "estoque", "btg pactual digital", "cra/cri/cdca"),
+    "XP": ("quantidade disponivel", "liquidez xp", "rentabilidade (a.a)", "xp investimentos", "saiba mais"),
+}
+# Nome do produto: "LCA ORIGINAL - ABR/2030", "CDB BTG PACTUAL - ABR/203...", "CRI - AUTOMOB".
+_NOME_EMISSOR = re.compile(
+    r"^(?:CDB|LCI|LCA|LCD|CRI|CRA)\b\s*-?\s*(?P<emissor>.+?)\s*(?:-\s*[A-Za-zÇç]{3}/\d{0,4}\s*)?(?:\.\.\.|…)?$",
+    re.IGNORECASE,
+)
+_NOME_GENERICO = {"pos-fixado", "pos fixado", "prefixado", "pre-fixado", "ipca", "inflacao", "hibrido"}
 _TRIVIAL = {"", "-", "no vencimento", "nao ha", "n/a"}
 
 
@@ -48,6 +60,23 @@ class Failed:
 _NO_DAILY = {ProductType.LCI, ProductType.LCA, ProductType.LCD}
 
 
+def resolve_platform(ext: RawExtraction) -> str:
+    """A plataforma que o modelo deu; se ele não soube, a única cujas pistas aparecem nos indícios."""
+    if ext.plataforma.strip().upper() in PLATAFORMAS:
+        return ext.plataforma.strip().upper()
+    texto = " ".join(plain(i) for i in ext.indicios)
+    achadas = {p for p, pistas in _PISTAS.items() if any(x in texto for x in pistas)}
+    return achadas.pop() if len(achadas) == 1 else "DESCONHECIDA"
+
+
+def _issuer_from_name(nome: str | None) -> str | None:
+    m = _NOME_EMISSOR.match((nome or "").strip())
+    if not m:
+        return None
+    emissor = m.group("emissor").strip(" -")
+    return None if not emissor or plain(emissor) in _NOME_GENERICO else emissor
+
+
 def _liquidity(texto: str | None) -> tuple[Liquidity, str | None]:
     t = re.sub(r"[\s_]+", " ", plain(texto))
     if t == "diaria":
@@ -64,7 +93,7 @@ def _liquidity(texto: str | None) -> tuple[Liquidity, str | None]:
 def interpret_offer(
     raw: RawOffer, plataforma: str, settings: Settings, today: date
 ) -> Created | Ignored | Failed:
-    if raw.cortada:
+    if raw.cortada and (not raw.taxas or not (raw.vencimento or "").strip()):
         return Ignored("cortada")
     tipo_txt = raw.tipo.strip().upper()
     if tipo_txt.startswith("TESOURO"):
@@ -90,6 +119,8 @@ def interpret_offer(
         interp["plataforma"] = plat
 
     emissor = (raw.emissor or "").strip()
+    if not emissor and (emissor := _issuer_from_name(raw.nome_exibido) or ""):
+        notas.append(f"Importado: emissor tirado do nome ({raw.nome_exibido})")
     if not emissor:
         erros.append("Emissor não visível")
     else:

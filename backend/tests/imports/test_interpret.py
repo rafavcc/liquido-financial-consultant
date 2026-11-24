@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.domain.products.base import Indexer, Liquidity, ProductType
 from app.domain.settings import Settings
-from app.imports.interpret import Created, Failed, Ignored, interpret_offer
+from app.imports.interpret import Created, Failed, Ignored, interpret_offer, resolve_platform
 from app.imports.schema import EXTRACTION_JSON_SCHEMA, RawExtraction, RawOffer, RawRate
 
 T = date(2026, 11, 23)
@@ -165,3 +165,44 @@ def test_daily_liquidity_on_credit_notes_becomes_at_maturity():
         assert isinstance(r, Created), r
         assert r.data.liquidez == Liquidity.NO_VENCIMENTO
         assert "liquidez diária" in r.data.observacoes
+
+
+def test_cut_flag_ignored_when_rate_and_maturity_are_readable():
+    """O modelo marca "cortada" quando só o nome termina em "..."; com taxa e vencimento, cadastra."""
+    r = interpret_offer(raw_ok(cortada=True), "XP", Settings(), T)
+    assert isinstance(r, Created)
+    assert interpret_offer(raw_ok(cortada=True, vencimento=None), "XP", Settings(), T) == Ignored("cortada")
+    assert interpret_offer(raw_ok(cortada=True, taxas=[]), "XP", Settings(), T) == Ignored("cortada")
+
+
+def test_issuer_taken_from_offer_name_when_missing():
+    casos = {
+        "LCA ORIGINAL - ABR/2030": "ORIGINAL",
+        "CDB BTG PACTUAL - ABR/203...": "BTG PACTUAL",
+        "CRI - AUTOMOB": "AUTOMOB",
+    }
+    for nome, emissor in casos.items():
+        tipo = nome.split()[0]
+        r = interpret_offer(raw_ok(tipo=tipo, emissor=None, nome_exibido=nome, vencimento="23/11/2030"),
+                            "XP", Settings(), T)
+        assert isinstance(r, Created), (nome, r)
+        assert r.data.emissor == emissor and "emissor" in r.data.observacoes
+    # nome genérico não é emissor
+    r = interpret_offer(raw_ok(tipo="LCI", emissor=None, nome_exibido="LCI - Pós-fixado"), "BTG", Settings(), T)
+    assert isinstance(r, Failed) and "Emissor não visível" in r.erros
+
+
+def test_resolve_platform_uses_clues_when_model_is_unsure():
+    def ext(**kw):
+        return RawExtraction(**kw)
+    assert resolve_platform(ext(plataforma="BTG")) == "BTG"
+    assert resolve_platform(ext(plataforma="DESCONHECIDA", indicios=["Investimentos Ultravioleta"])) == "NUBANK"
+    assert resolve_platform(ext(plataforma="DESCONHECIDA", indicios=["coluna Taxa Eq. do CDB", "Estoque"])) == "BTG"
+    assert resolve_platform(ext(plataforma="DESCONHECIDA", indicios=["Quantidade Disponível", "Liquidez XP"])) == "XP"
+    assert resolve_platform(ext(plataforma="DESCONHECIDA", indicios=["botão Investir"])) == "DESCONHECIDA"
+    # pistas contraditórias: não chuta
+    assert resolve_platform(ext(plataforma="DESCONHECIDA", indicios=["Ultravioleta", "Liquidez XP"])) == "DESCONHECIDA"
+
+
+def test_schema_asks_for_clues_before_platform():
+    assert list(RawExtraction.model_fields)[:2] == ["indicios", "plataforma"]

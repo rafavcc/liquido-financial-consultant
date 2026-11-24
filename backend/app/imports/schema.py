@@ -25,6 +25,9 @@ class RawOffer(BaseModel):
 
 
 class RawExtraction(BaseModel):
+    indicios: list[str] = Field(
+        [], description="textos e elementos visíveis que identificam a plataforma (logo, abas, colunas, selos)"
+    )
     plataforma: str = "DESCONHECIDA"
     ofertas: list[RawOffer] = []
 

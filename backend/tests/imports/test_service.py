@@ -341,3 +341,14 @@ def test_retry_after_error_does_not_duplicate_failures(env, monkeypatch):
     env.svc.process_next()
     assert len(env.repo.list_failures("ABERTA")) == 1
     assert env.items(batch)[0].falhas == 1
+
+
+def test_platform_from_clues_when_model_unsure(env, monkeypatch):
+    base = fixture("btg-app-lci-eq-cdb")
+    unsure = RawExtraction(indicios=["aba CRA/CRI/CDCA", "coluna Taxa Eq. do CDB"], plataforma="DESCONHECIDA",
+                           ofertas=base.ofertas[:1])
+    monkeypatch.setattr(env.llm, "extract", lambda image, mime: unsure)
+    batch, _ = env.svc.enqueue([shot("x")])
+    env.svc.process_next()
+    assert env.items(batch)[0].criados == 1
+    assert env.products.list()[0].plataforma == "BTG"

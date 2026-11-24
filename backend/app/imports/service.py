@@ -14,7 +14,7 @@ from app.data.repositories import ProductRepository, SettingsRepository
 from app.domain.offers import offer_key
 from app.domain.products.base import ProductData
 from app.domain.products.validation import validate_product
-from app.imports.interpret import Created, Failed, Ignored, interpret_offer
+from app.imports.interpret import Created, Failed, Ignored, interpret_offer, resolve_platform
 from app.imports.llm import LlmBadResponse, LlmClient, LlmUnavailable
 
 log = logging.getLogger(__name__)
@@ -160,8 +160,9 @@ class ImportService:
         batch = self._repo.get_batch(item.batch_id)
         batch_prints = {i.print_id for i in batch.itens} if batch else {item.print_id}
         counts = {"criados": 0, "renovados": 0, "ignorados": 0, "falhas": 0}
+        plataforma = resolve_platform(extraction)
         for raw in extraction.ofertas:
-            res = interpret_offer(raw, extraction.plataforma, settings, today)
+            res = interpret_offer(raw, plataforma, settings, today)
             if isinstance(res, Created):
                 data = res.data.model_copy(update={"print_id": item.print_id})
                 counts["criados" if self.upsert_offer(data, batch_prints) == "criado" else "renovados"] += 1
