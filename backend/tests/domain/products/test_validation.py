@@ -1,10 +1,13 @@
 from datetime import date
 from decimal import Decimal as D
 
-from app.domain.products.base import Indexer, Liquidity, ProductType
+import pytest
+
+from app.domain.products.base import Coverage, Indexer, Liquidity, ProductType
+from app.domain.products.factory import build_product
 from app.domain.products.validation import validate_product
 from app.domain.settings import Settings
-from product_helpers import TODAY, make
+from product_helpers import TODAY, ctx, make
 
 S = Settings()
 
@@ -26,14 +29,58 @@ def test_vencimento_required_and_future():
 
 def test_lci_lca_rules():
     assert "LCI não pode ter liquidez diária" in v(tipo=ProductType.LCI, liquidez=Liquidity.DIARIA)
-    assert "LCI exige carência mínima de 12 meses" in v(
-        tipo=ProductType.LCI, data_vencimento=date(2027, 6, 1))
-    assert "LCA exige carência mínima de 9 meses" in v(
-        tipo=ProductType.LCA, data_vencimento=date(2027, 6, 1))
-    assert v(tipo=ProductType.LCA, data_vencimento=date(2027, 8, 19)) == []
-    assert "LCI exige carência mínima de 12 meses" in v(
+    assert "LCI exige prazo mínimo de 6 meses" in v(
+        tipo=ProductType.LCI, data_vencimento=date(2027, 4, 1))
+    assert "LCA exige prazo mínimo de 6 meses" in v(
+        tipo=ProductType.LCA, data_vencimento=date(2027, 4, 1))
+    assert v(tipo=ProductType.LCA, data_vencimento=date(2027, 5, 19)) == []
+    assert "LCI exige prazo mínimo de 6 meses" in v(
         tipo=ProductType.LCI, liquidez=Liquidity.DIARIA_APOS_CARENCIA,
-        data_carencia=date(2027, 6, 1), data_vencimento=date(2029, 1, 1))
+        data_carencia=date(2027, 4, 1), data_vencimento=date(2029, 1, 1))
+
+
+def test_lci_ipca_needs_36_months():
+    e = v(tipo=ProductType.LCI, indexador=Indexer.IPCA_MAIS, taxa=D("0.06"),
+          data_vencimento=date(2029, 11, 18))
+    assert "LCI exige prazo mínimo de 36 meses" in e
+
+
+def test_lca_ipca_needs_12_months():
+    e = v(tipo=ProductType.LCA, indexador=Indexer.IPCA_MAIS, taxa=D("0.06"),
+          data_vencimento=date(2027, 8, 1))
+    assert "LCA exige prazo mínimo de 12 meses" in e
+
+
+def test_lcd_rules():
+    assert make(tipo=ProductType.LCD).cobertura == Coverage.FGC
+    assert "LCD exige prazo mínimo de 12 meses" in v(
+        tipo=ProductType.LCD, data_vencimento=date(2027, 6, 1))
+    assert "LCD não pode ter liquidez diária" in v(
+        tipo=ProductType.LCD, liquidez=Liquidity.DIARIA, data_vencimento=date(2030, 1, 2))
+    assert ProductType.LCD in S.ir_exempt_types and ProductType.LCD in S.iof_exempt_types
+
+
+def test_lcd_simulates_tax_free():
+    r = build_product(make(
+        tipo=ProductType.LCD, indexador=Indexer.PCT_CDI, taxa=D("0.90"),
+        data_vencimento=date(2030, 3, 15))).simulate(D("10000"), date(2031, 1, 1), ctx)
+    assert r.ir == 0 and r.iof == 0
+
+
+def test_old_settings_keys_ignored():
+    s = Settings.model_validate({"carencia_min_meses_lca": 9})
+    assert s.prazo_min_meses_lca == 6
+
+
+def test_negative_prazo_rejected():
+    with pytest.raises(ValueError):
+        Settings(prazo_min_meses_lcd=-1)
+
+
+def test_prazo_minimo_meses_lookup():
+    assert S.prazo_minimo_meses(ProductType.CDB, Indexer.PCT_CDI) is None
+    assert S.prazo_minimo_meses(ProductType.LCI, Indexer.IPCA_MAIS) == 36
+    assert S.prazo_minimo_meses(ProductType.LCD, Indexer.PRE) == 12
 
 
 def test_carencia_rules():

@@ -23,6 +23,7 @@ class ProductType(StrEnum):
     CDB = "CDB"
     LCI = "LCI"
     LCA = "LCA"
+    LCD = "LCD"
     CRI = "CRI"
     CRA = "CRA"
     TESOURO_SELIC = "TESOURO_SELIC"
@@ -82,6 +83,7 @@ _DEFAULT_COVERAGE = {
     ProductType.CDB: Coverage.FGC,
     ProductType.LCI: Coverage.FGC,
     ProductType.LCA: Coverage.FGC,
+    ProductType.LCD: Coverage.FGC,
     ProductType.CRI: Coverage.NENHUMA,
     ProductType.CRA: Coverage.NENHUMA,
     ProductType.FUNDO_RF: Coverage.NENHUMA,

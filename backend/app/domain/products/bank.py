@@ -127,6 +127,10 @@ class LCA(BankProduct):
     pass
 
 
+class LCD(BankProduct):
+    pass
+
+
 class CRI(BankProduct):
     pass
 

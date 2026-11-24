@@ -26,18 +26,14 @@ def validate_product(data: ProductData, settings: Settings, today: date) -> list
         elif venc <= today:
             erros.append("Vencimento deve ser uma data futura")
 
-    if data.tipo in (ProductType.LCI, ProductType.LCA):
-        meses = (
-            settings.carencia_min_meses_lci
-            if data.tipo == ProductType.LCI
-            else settings.carencia_min_meses_lca
-        )
+    if data.tipo in (ProductType.LCI, ProductType.LCA, ProductType.LCD):
+        meses = settings.prazo_minimo_meses(data.tipo, data.indexador) or 0
         if data.liquidez == Liquidity.DIARIA:
             erros.append(f"{data.tipo.value} não pode ter liquidez diária")
         else:
             ref = venc if data.liquidez == Liquidity.NO_VENCIMENTO else data.data_carencia
             if ref is not None and ref < _add_months(today, meses):
-                erros.append(f"{data.tipo.value} exige carência mínima de {meses} meses")
+                erros.append(f"{data.tipo.value} exige prazo mínimo de {meses} meses")
 
     if data.liquidez == Liquidity.DIARIA_APOS_CARENCIA:
         if data.data_carencia is None:

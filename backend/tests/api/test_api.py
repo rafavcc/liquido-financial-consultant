@@ -107,10 +107,10 @@ def test_products_crud_and_validation(client_fixtures):
 
     r = c.post(
         "/api/products",
-        json=_novo(tipo="LCI", data_vencimento="2027-05-19", nome="LCI curta"),
+        json=_novo(tipo="LCI", data_vencimento="2027-03-19", nome="LCI curta"),
     )
     assert r.status_code == 422
-    assert any("carência mínima" in m for m in r.json()["detail"])
+    assert any("prazo mínimo" in m for m in r.json()["detail"])
 
     tesouro = c.get("/api/products/tesouro").json()
     assert tesouro and all(p["tipo"].startswith("TESOURO_") for p in tesouro)

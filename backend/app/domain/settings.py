@@ -3,11 +3,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.domain.products.base import ProductType
+from app.domain.products.base import Indexer, ProductType
 
 D = Decimal
 
-_ISENTOS = {ProductType.LCI, ProductType.LCA, ProductType.CRI, ProductType.CRA}
+_ISENTOS = {ProductType.LCI, ProductType.LCA, ProductType.LCD, ProductType.CRI, ProductType.CRA}
 
 
 def _default_ir_brackets() -> list["IrBracket"]:
@@ -55,8 +55,11 @@ class Settings(BaseModel):
     manual_ipca_by_year: dict[int, Decimal] = Field(default_factory=dict)
     market_cache_ttl_hours: int = 6
     fgc_limite: Decimal = D("250000")
-    carencia_min_meses_lci: int = 12
-    carencia_min_meses_lca: int = 9
+    prazo_min_meses_lci: int = 6
+    prazo_min_meses_lci_ipca: int = 36
+    prazo_min_meses_lca: int = 6
+    prazo_min_meses_lca_ipca: int = 12
+    prazo_min_meses_lcd: int = 12
 
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
@@ -81,8 +84,25 @@ class Settings(BaseModel):
         ):
             _check_rate(getattr(self, name), name)
 
+        for name in (
+            "prazo_min_meses_lci", "prazo_min_meses_lci_ipca", "prazo_min_meses_lca",
+            "prazo_min_meses_lca_ipca", "prazo_min_meses_lcd",
+        ):
+            if getattr(self, name) < 0:
+                raise ValueError("prazo mínimo não pode ser negativo")
+
         if self.market_cache_ttl_hours < 1:
             raise ValueError("market_cache_ttl_hours deve ser >= 1")
         if self.projection_mode == "manual" and not (self.manual_selic_by_year and self.manual_ipca_by_year):
             raise ValueError("modo manual exige ao menos um ano de Selic e de IPCA")
         return self
+
+    def prazo_minimo_meses(self, tipo: ProductType, indexador: Indexer) -> int | None:
+        ipca = indexador == Indexer.IPCA_MAIS
+        if tipo == ProductType.LCI:
+            return self.prazo_min_meses_lci_ipca if ipca else self.prazo_min_meses_lci
+        if tipo == ProductType.LCA:
+            return self.prazo_min_meses_lca_ipca if ipca else self.prazo_min_meses_lca
+        if tipo == ProductType.LCD:
+            return self.prazo_min_meses_lcd
+        return None
