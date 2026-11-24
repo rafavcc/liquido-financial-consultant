@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from app.data.imports_repo import ImportBatch, ImportFailure, ImportItem
 from app.deps import Container, get_container
 from app.domain.products.base import ProductData
-from app.imports.service import MAX_BYTES, MULTI_MODEL_AVISO, ImportService, UploadedFile
+from app.imports.llm import MULTI_MODEL_AVISO
+from app.imports.service import MAX_BYTES, ImportService, UploadedFile
 
 router = APIRouter()
 

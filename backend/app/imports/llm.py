@@ -36,6 +36,15 @@ class LlmRejected(LlmBadResponse):
     """O servidor recusou a chamada (chave, endereço ou modelo); a mensagem já é para o usuário."""
 
 
+MULTI_MODEL_AVISO = (
+    "Unsloth está com vários modelos simultâneos (multi-model) ligado: desligue para importar"
+)
+
+
+class LlmMultiModel(LlmRejected):
+    """O Unsloth está com multi-model ligado; não se chama o modelo."""
+
+
 class LlmClient(Protocol):
     def extract(self, image: bytes, mime: str) -> RawExtraction: ...
 
@@ -128,6 +137,8 @@ class OpenAICompatClient:
         return RawExtraction.model_validate(json.loads(_clean(text)))
 
     def extract(self, image: bytes, mime: str) -> RawExtraction:
+        if self.multi_model_enabled() is True:
+            raise LlmMultiModel(MULTI_MODEL_AVISO)
         url = f"data:{mime};base64,{base64.b64encode(image).decode()}"
         messages: list[dict] = [
             {"role": "system", "content": self._system},
@@ -154,7 +165,6 @@ class OpenAICompatClient:
             ).is_success
         except httpx.HTTPError:
             return False
-
 
     def multi_model_enabled(self) -> bool | None:
         """Só leitura do Unsloth Studio; None se o servidor não for Studio ou não responder."""

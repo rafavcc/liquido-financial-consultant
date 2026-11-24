@@ -17,7 +17,7 @@ import httpx
 
 from app.domain.settings import Settings
 from app.imports.interpret import Created, interpret_offer, resolve_platform
-from app.imports.llm import LlmConfig, OpenAICompatClient
+from app.imports.llm import LlmConfig, LlmMultiModel, OpenAICompatClient
 from app.imports.schema import RawExtraction
 from app.imports.service import detect_mime
 
@@ -116,6 +116,9 @@ def main(argv: list[str]) -> int:
         print(f"== {img.name}")
         try:
             raw = client.extract(content, mime)
+        except LlmMultiModel as exc:
+            print(f"   {exc}")
+            return 1
         except Exception as exc:  # avaliação manual: mostra e segue
             print(f"   erro: {exc}")
             continue

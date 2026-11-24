@@ -45,3 +45,28 @@ def test_taxa_compared_numerically():
     exp = expected_fields_from([{"tipo": "CDB", "emissor": "X", "taxa": "0.1120", "vencimento": "2028-01-01",
                                  "valor_minimo": "1000.00"}], Settings(), T)
     assert exp[0]["taxa"] == "0.112" and exp[0]["minimo"] == "1000"
+
+
+def test_main_aborts_whole_run_on_multi_model(tmp_path, monkeypatch, capsys):
+    import httpx
+
+    from app.imports import eval as ev
+    from app.imports.llm import MULTI_MODEL_AVISO
+
+    for n in ("a.png", "b.png"):
+        (tmp_path / n).write_bytes(b"\x89PNG\r\n\x1a\n" + n.encode())
+    monkeypatch.setenv("LLM_BASE_URL", "http://llm/v1")
+    monkeypatch.setenv("CASA_LLM_MODEL", "m")
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.path)
+        return httpx.Response(200, json={"enabled": True, "mode": "on"})
+
+    real = httpx.Client
+    monkeypatch.setattr(ev.httpx, "Client", lambda *a, **k: real(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(ev, "BACKEND_DIR", tmp_path)
+    assert ev.main([str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert MULTI_MODEL_AVISO in out and "b.png" not in out
+    assert seen == ["/api/settings/multi-model"]

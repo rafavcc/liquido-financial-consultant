@@ -9,7 +9,7 @@ from app.data import db
 from app.data.imports_repo import ImportRepository, PrintStore
 from app.data.repositories import ProductRepository, SettingsRepository
 from app.domain.offers import is_expired
-from app.imports.llm import LlmBadResponse, LlmUnavailable
+from app.imports.llm import MULTI_MODEL_AVISO, LlmBadResponse, LlmMultiModel, LlmUnavailable
 from app.imports.schema import RawExtraction
 from app.imports.service import ImportService, UploadedFile
 
@@ -33,6 +33,8 @@ class StubLlm:
         return self.multi_model
 
     def extract(self, image, mime):
+        if self.multi_model:
+            raise LlmMultiModel(MULTI_MODEL_AVISO)
         self.calls += 1
         if self.error:
             raise self.error

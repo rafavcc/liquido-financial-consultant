@@ -17,6 +17,8 @@ def make(handler) -> tuple[OpenAICompatClient, list[dict]]:
     bodies: list[dict] = []
 
     def wrapped(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/settings/multi-model":  # servidor sem Studio
+            return httpx.Response(404)
         bodies.append(json.loads(request.content) if request.content else {})
         return handler(request, len(bodies))
 
@@ -168,3 +170,30 @@ def test_multi_model_enabled_unknown_when_absent_or_unreadable():
         raise httpx.ConnectError("x")
 
     assert _studio(boom)[0].multi_model_enabled() is None
+
+
+def _posts(seen):
+    return [r for r in seen if r.url.path.endswith("/chat/completions")]
+
+
+def test_extract_refuses_when_multi_model_on_and_never_posts():
+    from app.imports.llm import MULTI_MODEL_AVISO, LlmMultiModel, LlmRejected
+
+    def handler(r):
+        return httpx.Response(200, json={"enabled": True, "mode": "on"})
+
+    client, seen = _studio(handler)
+    with pytest.raises(LlmMultiModel, match="multi-model") as ei:
+        client.extract(PNG, "image/png")
+    assert str(ei.value) == MULTI_MODEL_AVISO and isinstance(ei.value, LlmRejected)
+    assert _posts(seen) == [] and len(seen) == 1
+
+
+@pytest.mark.parametrize("studio", [httpx.Response(200, json={"enabled": False, "mode": "off"}), httpx.Response(404)])
+def test_extract_proceeds_when_multi_model_off_or_unknown(studio):
+    def handler(r):
+        return completion(json.dumps(OK)) if r.url.path.endswith("/chat/completions") else studio
+
+    client, seen = _studio(handler)
+    assert client.extract(PNG, "image/png").plataforma == "XP"
+    assert len(_posts(seen)) == 1
