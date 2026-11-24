@@ -14,6 +14,8 @@ from app.imports.parsing import parse_rate, plain
 from app.imports.schema import RawRate
 
 EXCLUDED_LABEL = re.compile(r"equival|equiv|\beq\b|bruto|gross|riscad|\bir\b", re.I)
+# "Taxa eq. CDB": em produto isento é o bruto equivalente (descarta); num CDB é a própria taxa.
+EQ_CDB_LABEL = re.compile(r"\beq\b.*\bcdb\b|equival.*\bcdb\b", re.I)
 _GROSS_UP_TOLERANCE = Decimal("0.03")
 
 
@@ -51,12 +53,18 @@ def choose_rate(
                 break
         else:
             continue
-        if EXCLUDED_LABEL.search(plain(valor)) or EXCLUDED_LABEL.search(plain(rotulo)):
+        label = f"{plain(rotulo)} {plain(valor)}"
+        eq_cdb_is_own_rate = tipo not in settings.ir_exempt_types and EQ_CDB_LABEL.search(label)
+        if EXCLUDED_LABEL.search(label) and not eq_cdb_is_own_rate:
             ignoradas.append(_describe(valor, rotulo))
             continue
         if any(k[1:] == parsed for k in kept):
             continue
         kept.append((valor.strip(), *parsed))
+
+    # "103,75%" ao lado de "103,75% do CDI": o número solto é a mesma taxa sem o indexador
+    com_indexador = {k[2] for k in kept if k[1] != Indexer.PRE}
+    kept = [k for k in kept if not (k[1] == Indexer.PRE and k[2] in com_indexador)]
 
     if (
         tipo in settings.ir_exempt_types

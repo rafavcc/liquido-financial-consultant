@@ -83,3 +83,17 @@ def test_two_unrelated_rates_are_ambiguous():
 
 def test_no_rate_is_ambiguous():
     assert isinstance(choose_rate([], CDB, date(2028, 1, 3), Settings(), T), RateAmbiguous)
+
+
+def test_btg_cdb_table_eq_cdb_is_the_rate_itself():
+    """Tabela de CDB do site do BTG: "Taxa" = "103,75%" (CDI implícito) e "Taxa Eq. do CDB" = "103,75% do CDI".
+    Num CDB o equivalente CDB é a própria taxa; o número solto igual a ela é a mesma taxa sem indexador."""
+    taxas = [RawRate(rotulo="Taxa Eq. do CDB", texto="103,75% do CDI"), RawRate(rotulo="Taxa", texto="103,75%")]
+    r = choose_rate(taxas, ProductType.CDB, date(2028, 11, 23), Settings(), T)
+    assert (r.indexador, r.taxa) == (Indexer.PCT_CDI, D("1.0375"))
+
+
+def test_eq_cdb_still_discarded_for_exempt_types():
+    taxas = [RawRate(rotulo="Taxa", texto="90,00% do CDI"), RawRate(rotulo="Taxa eq. CDB", texto="108,46% do CDI")]
+    r = choose_rate(taxas, ProductType.LCI, date(2027, 11, 23), Settings(), T)
+    assert r.taxa == D("0.9")
