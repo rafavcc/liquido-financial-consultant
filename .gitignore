@@ -13,3 +13,4 @@ frontend/playwright-report/
 
 # prints reais de calibração: ficam só na máquina local
 backend/calibration/prints/
+backend/calibration/respostas/

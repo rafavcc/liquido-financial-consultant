@@ -1,0 +1,32 @@
+{
+  "plataforma": "XP",
+  "ofertas": [
+    {
+      "tipo": "CDB",
+      "emissor": "Banco Alfa",
+      "nome_exibido": "CDB Alfa 2028",
+      "taxas": [{"rotulo": "Taxa", "texto": "112% do CDI"}],
+      "vencimento": "15/03/2028",
+      "aplicacao_minima": "R$ 1.000,00",
+      "liquidez": "No vencimento"
+    },
+    {
+      "tipo": "LCI",
+      "emissor": "Banco Beta",
+      "nome_exibido": "LCI Beta 2028",
+      "taxas": [{"rotulo": "Taxa", "texto": "93% do CDI"}],
+      "vencimento": "20/09/2028",
+      "aplicacao_minima": "R$ 1.000,00",
+      "liquidez": "No vencimento"
+    },
+    {
+      "tipo": "CDB",
+      "emissor": "Banco Gama",
+      "nome_exibido": "CDB Gama 2029",
+      "taxas": [{"rotulo": "Taxa", "texto": "110% do CDI"}],
+      "vencimento": null,
+      "aplicacao_minima": "R$ 1.000,00",
+      "liquidez": "No vencimento"
+    }
+  ]
+}

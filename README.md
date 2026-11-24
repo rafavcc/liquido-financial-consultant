@@ -51,7 +51,22 @@ Tudo o que você cadastrou (produtos, configurações e o cache de dados de merc
 backend/data/liquido.db
 ```
 
-Para fazer backup, copie esse arquivo (de preferência com o serviço parado: `sudo systemctl stop liquido`, copiar, `sudo systemctl start liquido`). Para restaurar, coloque o arquivo de volta no mesmo lugar.
+Os prints enviados na importação ficam em `backend/data/prints/`; inclua essa pasta no backup. Para fazer backup, copie esse arquivo e a pasta (de preferência com o serviço parado: `sudo systemctl stop liquido`, copiar, `sudo systemctl start liquido`). Para restaurar, coloque o arquivo de volta no mesmo lugar.
+
+## Importar prints
+
+A página **Importar** lê prints de ofertas (XP, BTG, Nubank) com um modelo de visão e cadastra os produtos. Para ativar, preencha `/etc/liquido/liquido.env` (criado pelo `install.sh`, modo 600) e reinicie o serviço:
+
+```
+LLM_BASE_URL=http://servidor-llm:porta/v1   # API compatível com OpenAI
+CASA_LLM_MODEL=unsloth/Qwen3.5-9B-GGUF      # nome do modelo (use o 9B, nunca o 27B)
+LLM_API_KEY=                                 # opcional
+LLM_TIMEOUT_S=300                            # opcional
+```
+
+`sudo systemctl restart liquido`. Sem `LLM_BASE_URL` e `CASA_LLM_MODEL` a importação aparece como não configurada. O servidor de modelos troca o modelo carregado sozinho (auto-switch) quando recebe o pedido; a primeira leitura depois de um tempo parado pode demorar, e se o servidor estiver fora do ar o item tenta 3 vezes e fica com erro, com a opção "Tentar de novo".
+
+Para medir a qualidade da leitura contra o modelo real (nunca grava no banco), coloque prints e `<nome>.esperado.json` em `backend/calibration/prints/` e rode `cd backend && uv run python -m app.imports.eval`. As respostas brutas vão para `backend/calibration/respostas/`.
 
 ## Adicionar à tela de início do iPhone
 

@@ -36,6 +36,25 @@ info "Instalando dependências do backend"
 info "Instalando dependências e gerando o frontend"
 (cd "$APP_DIR/frontend" && npm ci && npm run build)
 
+mkdir -p "$APP_DIR/backend/data/prints"
+
+info "Configuração da importação de prints (pede sudo)"
+ENV_FILE="/etc/liquido/liquido.env"
+if [ ! -f "$ENV_FILE" ]; then
+  TMP_ENV="$(mktemp)"
+  cat > "$TMP_ENV" <<'ENVEOF'
+# Importação de prints por IA: preencha LLM_BASE_URL e CASA_LLM_MODEL e reinicie (sudo systemctl restart liquido).
+# Sem os dois, a página Importar avisa que a importação não está configurada.
+LLM_BASE_URL=
+CASA_LLM_MODEL=
+LLM_API_KEY=
+ENVEOF
+  sudo install -d -m 755 -o root -g root /etc/liquido
+  sudo install -m 600 -o root -g root "$TMP_ENV" "$ENV_FILE"
+  rm -f "$TMP_ENV"
+  info "Criei $ENV_FILE; preencha-o para ativar a importação de prints"
+fi
+
 info "Instalando o serviço systemd (pede sudo)"
 TMP_UNIT="$(mktemp)"
 trap 'rm -f "$TMP_UNIT"' EXIT

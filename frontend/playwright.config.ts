@@ -3,7 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const PORT = 8765;
+const PORT = Number(process.env.E2E_PORT ?? 8765);
 // banco descartável: o e2e nunca toca em backend/data/liquido.db
 const dbDir = mkdtempSync(join(tmpdir(), "liquido-e2e-"));
 
@@ -28,6 +28,10 @@ export default defineConfig({
       LIQUIDO_MARKET_FIXTURES: join(process.cwd(), "..", "backend", "tests", "fixtures", "market"),
       LIQUIDO_DB: join(dbDir, "liquido.db"),
       LIQUIDO_STATIC_DIR: join(process.cwd(), "dist"),
+      // importação de prints: cliente de LLM falso (fixtures) e variáveis fictícias; nunca o servidor real
+      LIQUIDO_LLM_FIXTURES: join(process.cwd(), "..", "backend", "tests", "fixtures", "imports", "e2e"),
+      LLM_BASE_URL: "http://127.0.0.1:1/v1",
+      CASA_LLM_MODEL: "fixtures",
     },
   },
 });
