@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from app.domain.products.base import Indexer, ProductType
 
@@ -60,8 +60,17 @@ class Settings(BaseModel):
     prazo_min_meses_lca: int = 6
     prazo_min_meses_lca_ipca: int = 12
     prazo_min_meses_lcd: int = 12
-    oferta_alerta_dias: int = 14
+    # expira antes de alerta: o validador de alerta precisa ver a expiração já validada.
     oferta_expira_dias: int = 28
+    oferta_alerta_dias: int = 14
+
+    @field_validator("oferta_alerta_dias")
+    @classmethod
+    def _alerta_antes_da_expiracao(cls, v: int, info: ValidationInfo) -> int:
+        expira = info.data.get("oferta_expira_dias")
+        if v < 1 or (expira is not None and v >= expira):
+            raise ValueError("o alerta de oferta antiga deve vir antes da expiração")
+        return v
 
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
@@ -92,9 +101,6 @@ class Settings(BaseModel):
         ):
             if getattr(self, name) < 0:
                 raise ValueError("prazo mínimo não pode ser negativo")
-
-        if not (1 <= self.oferta_alerta_dias < self.oferta_expira_dias):
-            raise ValueError("o alerta de oferta antiga deve vir antes da expiração")
 
         if self.market_cache_ttl_hours < 1:
             raise ValueError("market_cache_ttl_hours deve ser >= 1")

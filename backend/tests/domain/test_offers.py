@@ -70,3 +70,15 @@ def test_settings_validation_alert_before_expiry():
         Settings(oferta_alerta_dias=28, oferta_expira_dias=28)
     with pytest.raises(ValueError):
         Settings(oferta_alerta_dias=0)
+
+
+def test_settings_alert_error_carries_field_and_text():
+    from pydantic import ValidationError
+
+    from app.api import validation_messages
+
+    with pytest.raises(ValidationError) as exc:
+        Settings(oferta_alerta_dias=28, oferta_expira_dias=28)
+    assert validation_messages(exc.value) == [
+        "oferta_alerta_dias: o alerta de oferta antiga deve vir antes da expiração"
+    ]

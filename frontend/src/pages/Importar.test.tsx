@@ -177,3 +177,23 @@ test("falhas: Descartar chama discard e atualiza as listas", async () => {
     expect(keys).toEqual(expect.arrayContaining(["imports", "products", "simulate"]));
   });
 });
+
+test("ao concluir o lote a lista de falhas é invalidada e refeita", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    imports.list
+      .mockResolvedValueOnce([lote([item({ status: "LENDO" })])])
+      .mockResolvedValue([lote([item({ falhas: 1 })])]);
+    imports.failures.mockResolvedValueOnce([]).mockResolvedValue([falha()]);
+    const { invalidate } = setup();
+    expect(await screen.findByText("lendo…")).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3100);
+    });
+    expect(await screen.findByRole("region", { name: "Falhas" })).toBeInTheDocument();
+    const keys = invalidate.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown[] }).queryKey));
+    expect(keys).toContain(JSON.stringify(["imports", "failures"]));
+  } finally {
+    vi.useRealTimers();
+  }
+});

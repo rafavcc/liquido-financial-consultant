@@ -262,8 +262,5 @@ export function fieldGroup(path: string): GrupoId | null {
 /** "campo.sub: mensagem" → { path, message }; mensagens sem campo ficam com path vazio. */
 export function parseServerError(raw: string): { path: string; message: string } {
   const m = /^([a-z_]+(?:\.[\w]+)*): (.*)$/s.exec(raw);
-  if (m) return { path: m[1], message: m[2] };
-  // Validação de Settings como um todo chega sem nome de campo.
-  if (/oferta antiga/.test(raw)) return { path: "oferta_alerta_dias", message: raw };
-  return { path: "", message: raw };
+  return m ? { path: m[1], message: m[2] } : { path: "", message: raw };
 }

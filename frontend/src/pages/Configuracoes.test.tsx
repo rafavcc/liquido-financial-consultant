@@ -359,8 +359,11 @@ test("alerta maior ou igual à expiração é recusado localmente e erro do serv
   expect(screen.getByText("O alerta deve vir antes da expiração")).toBeInTheDocument();
   await userEvent.clear(alerta);
   await userEvent.type(alerta, "10");
-  mocked.settings.update.mockRejectedValue(new ApiError(422, ["o alerta de oferta antiga deve vir antes da expiração"]));
+  mocked.settings.update.mockRejectedValue(new ApiError(422, ["oferta_alerta_dias: o alerta de oferta antiga deve vir antes da expiração"]));
   await userEvent.click(salvar());
   const alert = await screen.findByRole("alert", { name: "Erros ao salvar" });
   expect(within(alert).getByText("o alerta de oferta antiga deve vir antes da expiração")).toBeInTheDocument();
+  expect(within(alert).getByText("Alertar após (dias):")).toBeInTheDocument();
+  const grupo = screen.getByRole("heading", { name: "Ofertas" }).closest("section")!;
+  expect(within(grupo).getAllByText("o alerta de oferta antiga deve vir antes da expiração").length).toBeGreaterThan(0);
 });

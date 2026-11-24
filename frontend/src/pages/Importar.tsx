@@ -146,6 +146,7 @@ export function Importar() {
     if (anterior.current > 0 && pendentes === 0) {
       void qc.invalidateQueries({ queryKey: ["products"] });
       void qc.invalidateQueries({ queryKey: ["simulate"] });
+      void qc.invalidateQueries({ queryKey: ["imports", "failures"] });
     }
     anterior.current = pendentes;
   }, [pendentes, qc]);
