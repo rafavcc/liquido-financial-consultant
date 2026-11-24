@@ -130,13 +130,13 @@ export function Comparador() {
     }
   }, [data, plataformas, filters.plataforma]);
 
-  const secao = (list: SimulationResult[] | undefined) => {
-    const filtrada = applyFilters(list ?? [], filters, isentos);
-    return { dom: dominados(filtrada), lista: ordenar(filtrada, ordenacao) };
-  };
-  const verdes = useMemo(() => secao(data?.vence_ate_data), [data, filters, isentos, ordenacao]); // eslint-disable-line react-hooks/exhaustive-deps
-  const vermelhos = useMemo(() => secao(data?.vence_depois), [data, filters, isentos, ordenacao]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cinzas = useMemo(() => secao(data?.indisponiveis), [data, filters, isentos, ordenacao]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { verdes, vermelhos, cinzas } = useMemo(() => {
+    const secao = (list: SimulationResult[] | undefined) => {
+      const filtrada = applyFilters(list ?? [], filters, isentos);
+      return { dom: dominados(filtrada), lista: ordenar(filtrada, ordenacao) };
+    };
+    return { verdes: secao(data?.vence_ate_data), vermelhos: secao(data?.vence_depois), cinzas: secao(data?.indisponiveis) };
+  }, [data, filters, isentos, ordenacao]);
 
   const erroValidacao =
     valorNum === null || Number(valorNum) <= 0
@@ -233,7 +233,7 @@ export function Comparador() {
           </section>
           )}
 
-          {!semData && (
+          {(!semData || vermelhos.lista.length > 0) && (
           <section aria-label="Vencem depois da sua data">
             <SectionHeader
               tone="neg"

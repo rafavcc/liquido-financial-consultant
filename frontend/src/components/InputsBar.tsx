@@ -36,7 +36,7 @@ export function InputsBar({ valor, dataAlvo, minDate, onValor, onData, horizonte
         </div>
       </div>
       <div>
-        <span id="horizonte-label" className={label}>Horizonte</span>
+        <span className={label}>Horizonte</span>
         <div role="radiogroup" aria-label="Horizonte" className="mb-2 flex flex-wrap gap-1.5">
           {HORIZONTES.map((h) => {
             const on = h.id === horizonte;

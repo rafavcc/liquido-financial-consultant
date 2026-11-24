@@ -104,3 +104,11 @@ test("localStorage inválido cai no padrão", async () => {
   expect(await screen.findByRole("radio", { name: "Escolher data" })).toHaveAttribute("aria-checked", "true");
   expect((screen.getByLabelText("Ordenar por") as HTMLSelectElement).value).toBe("VALOR_LIQUIDO");
 });
+
+test("sem data: não resgatável em vence_depois continua visível", async () => {
+  const preso = { ...mk("preso", "CDB Preso", "0.12"), secao: "VENCE_DEPOIS" as const, resgatavel: false };
+  mocked.simulate.mockResolvedValue({ ...fixtureResponse, horizonte: "SEM_DATA", data_alvo: null, vence_ate_data: [alta], vence_depois: [preso] });
+  setup();
+  await userEvent.click(await screen.findByRole("radio", { name: "Sem data" }));
+  expect(await screen.findByText("CDB Preso")).toBeInTheDocument();
+});
