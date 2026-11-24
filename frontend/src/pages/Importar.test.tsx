@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { api } from "../api/client";
 import type { ImportBatchView, ImportItemView } from "../api/types";
@@ -73,17 +73,39 @@ test("mostra o estado de cada item", async () => {
   await waitFor(() => expect(imports.retry).toHaveBeenCalledWith("3"));
 });
 
-test("repete a consulta enquanto há pendentes, para ao concluir e invalida o ranking", async () => {
-  imports.list
-    .mockResolvedValueOnce([lote([item({ status: "LENDO" })])])
-    .mockResolvedValue([lote([item({ criados: 2 })])]);
-  const { invalidate } = setup();
-  expect(await screen.findByText("lendo…")).toBeInTheDocument();
-  expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["products"] });
-  expect(await screen.findByText("✓ 2 cadastradas", {}, { timeout: 5000 })).toBeInTheDocument();
-  expect(imports.list).toHaveBeenCalledTimes(2);
-  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["products"] });
-  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["simulate"] });
-  await new Promise((r) => setTimeout(r, 3300));
-  expect(imports.list).toHaveBeenCalledTimes(2);
-}, 15000);
+test("repete a consulta a cada 3000 ms enquanto há pendentes, para ao concluir e invalida o ranking uma vez", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    imports.list
+      .mockResolvedValueOnce([lote([item({ status: "LENDO" })])])
+      .mockResolvedValue([lote([item({ criados: 2 })])]);
+    const { invalidate } = setup();
+    expect(await screen.findByText("lendo…")).toBeInTheDocument();
+    expect(imports.list).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2900);
+    });
+    expect(imports.list).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    expect(imports.list).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("✓ 2 cadastradas")).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+    expect(imports.list).toHaveBeenCalledTimes(2);
+    const chamadas = (k: string) => invalidate.mock.calls.filter(([f]) => JSON.stringify(f?.queryKey) === JSON.stringify([k])).length;
+    expect(chamadas("products")).toBe(1);
+    expect(chamadas("simulate")).toBe(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("falha ao consultar o status explica e mantém o seletor desabilitado", async () => {
+  imports.status.mockRejectedValue(new Error("x"));
+  setup();
+  expect(await screen.findByText("Não foi possível verificar a importação. Tente recarregar a página.")).toBeInTheDocument();
+  expect(screen.getByLabelText("Escolher prints")).toBeDisabled();
+});

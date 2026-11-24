@@ -129,6 +129,11 @@ export function Importar() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold tracking-tight">Importar prints</h1>
 
+      {status.isError && (
+        <div role="alert" className="rounded-xl border border-line bg-subtle px-4 py-3 text-sm text-neg">
+          Não foi possível verificar a importação. Tente recarregar a página.
+        </div>
+      )}
       {status.data && !status.data.configurado && (
         <div role="alert" className="rounded-xl border border-line bg-subtle px-4 py-3 text-sm">
           <strong>Importação não configurada</strong>
