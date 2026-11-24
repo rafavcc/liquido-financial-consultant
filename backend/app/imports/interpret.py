@@ -37,6 +37,7 @@ _NOME_EMISSOR = re.compile(
     r"^(?:CDB|LCI|LCA|LCD|CRI|CRA)\b\s*-?\s*(?P<emissor>.+?)\s*(?:-\s*[A-Za-zÇç]{3}/\d{0,4}\s*)?(?:\.\.\.|…)?$",
     re.IGNORECASE,
 )
+_SUFIXO_MES = re.compile(r"\s*-\s*[A-Za-zÇç]{3}/\d{2,4}\s*$")
 _NOME_GENERICO = {"pos-fixado", "pos fixado", "prefixado", "pre-fixado", "ipca", "inflacao", "hibrido"}
 _TRIVIAL = {"", "-", "—", "–", "no vencimento", "nao ha", "n/a"}
 
@@ -118,7 +119,7 @@ def interpret_offer(
     else:
         interp["plataforma"] = plat
 
-    emissor = (raw.emissor or "").strip()
+    emissor = _SUFIXO_MES.sub("", (raw.emissor or "").strip())
     if not emissor and (emissor := _issuer_from_name(raw.nome_exibido) or ""):
         notas.append(f"Importado: emissor tirado do nome ({raw.nome_exibido})")
     if not emissor:

@@ -26,6 +26,7 @@ from app.imports.parsing import (
         ("IPC-A + 7,800%", (I.IPCA_MAIS, D("0.078"))),
         ("IPCA + 12,04%", (I.IPCA_MAIS, D("0.1204"))),
         ("IPCA+ 7%", (I.IPCA_MAIS, D("0.07"))),
+        ("IPC + 12,04%", (I.IPCA_MAIS, D("0.1204"))),  # o 9B lê "IPCA +" do BTG assim
         ("15,100%", (I.PRE, D("0.151"))),
         ("18,26% a.a.", (I.PRE, D("0.1826"))),
         ("Pré 14,2%", (I.PRE, D("0.142"))),

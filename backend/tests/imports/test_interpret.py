@@ -213,3 +213,10 @@ def test_dash_grace_period_means_none():
         r = interpret_offer(raw_ok(carencia=vazio), "BTG", Settings(), T)
         assert isinstance(r, Created), (vazio, r)
         assert r.data.data_carencia is None
+
+
+def test_issuer_loses_glued_maturity_suffix():
+    """O 9B às vezes devolve o emissor com o mês do nome ("ASA SCFI - SET/2029"), o que duplica a oferta."""
+    for bruto, limpo in (("ASA SCFI - SET/2029", "ASA SCFI"), ("FIBRA - ABR/2032", "FIBRA"), ("BRF", "BRF")):
+        r = interpret_offer(raw_ok(emissor=bruto), "XP", Settings(), T)
+        assert r.data.emissor == limpo

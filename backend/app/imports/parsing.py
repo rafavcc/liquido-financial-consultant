@@ -12,7 +12,7 @@ from app.domain.products.base import Amortizacao, Indexer, Periodicidade
 _NUM = r"(\d+(?:[.,]\d+)?)"
 _PCT_CDI = re.compile(_NUM + r"\s*%\s*(?:do\s+)?CDI\b", re.I)
 _CDI_MAIS = re.compile(r"\bCDI\s*\+\s*" + _NUM + r"\s*%", re.I)
-_IPCA_MAIS = re.compile(r"\bIPC-?A\s*\+\s*" + _NUM + r"\s*%", re.I)
+_IPCA_MAIS = re.compile(r"\bIPC(?:-?A)?\s*\+\s*" + _NUM + r"\s*%", re.I)
 _PRE = re.compile(_NUM + r"\s*%")
 
 _MESES = {m: i + 1 for i, m in enumerate(
