@@ -16,7 +16,7 @@ from app.domain.products.base import ProductData
 from app.domain.products.validation import validate_product
 from app.imports.interpret import Created, Failed, Ignored, interpret_offer, resolve_platform
 from app.imports.parsing import parse_amortizacao, parse_periodicidade
-from app.imports.llm import LlmBadResponse, LlmClient, LlmUnavailable
+from app.imports.llm import LlmBadResponse, LlmClient, LlmRejected, LlmUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -137,6 +137,8 @@ class ImportService:
             extraction = self._llm.extract(path.read_bytes(), mime)  # fora do lock
         except LlmUnavailable as exc:
             return self._unavailable(item, str(exc))
+        except LlmRejected as exc:
+            return self._fail(item, str(exc))
         except LlmBadResponse:
             return self._fail(item, "Resposta do modelo ilegível")
         with self._lock:

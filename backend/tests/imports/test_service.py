@@ -397,3 +397,14 @@ def test_resolve_failure_refills_juros_and_amortizacao_from_raw(env):
     assert out.juros_periodicos == "MENSAL" and out.amortizacao.inicio == date(2031, 6, 16)
     (p,) = env.products.list()
     assert p.juros_periodicos == "MENSAL" and p.amortizacao is not None
+
+
+def test_rejected_llm_fails_with_its_own_message_without_retry(env):
+    from app.imports.llm import LlmRejected
+
+    env.llm.error = LlmRejected("Servidor LLM recusou a chave (HTTP 401)")
+    batch, _ = env.svc.enqueue([shot("btg-app-lci-eq-cdb")])
+    env.svc.process_next()
+    it = env.items(batch)[0]
+    assert it.status == "ERRO" and it.erro == "Servidor LLM recusou a chave (HTTP 401)"
+    assert env.llm.calls == 1

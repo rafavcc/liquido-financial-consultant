@@ -128,7 +128,8 @@ def build_container(
         products, settings, ImportRepository(conn), PrintStore(db_path.parent / "prints", conn),
         llm, lock, today_fn, lambda: datetime.now(UTC),
     )
-    service.requeue_reading()
+    if llm is not None:  # sem LLM esta instância não mexe na fila de outra
+        service.requeue_reading()
     return Container(
         products, settings, market, today_fn, static_dir, lock=lock,
         imports=service, llm=llm, llm_model=llm_model,

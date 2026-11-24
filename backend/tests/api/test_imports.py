@@ -196,3 +196,22 @@ def test_no_worker_without_llm_so_a_second_instance_never_steals_the_queue(tmp_p
     with TestClient(app):
         novos = [t for t in __import__("threading").enumerate() if t.name == "import-worker" and t not in before]
         assert novos == []
+
+
+def test_instance_without_llm_does_not_requeue_reading_items(tmp_path, monkeypatch):
+    from app.data import db
+    from app.data.imports_repo import ImportRepository, PrintStore
+
+    for v in ("LLM_BASE_URL", "CASA_LLM_MODEL", "LIQUIDO_LLM_FIXTURES", "LIQUIDO_IMPORT_WORKER"):
+        monkeypatch.delenv(v, raising=False)
+    path = tmp_path / "db.sqlite"
+    conn = db.connect(path)
+    repo = ImportRepository(conn)
+    batch = repo.create_batch()
+    store = PrintStore(tmp_path / "prints", conn)
+    item = repo.add_item(batch, store.save(b"\x89PNG\r\n\x1a\nx", "image/png"), "a.png")
+    repo.set_status(item, "LENDO")
+    conn.close()
+    create_app(path, fetchers=FixtureFetchers(FIXTURES), today_fn=lambda: TODAY)
+    conn = db.connect(path)
+    assert [i.status for i in ImportRepository(conn).get_batch(batch).itens] == ["LENDO"]

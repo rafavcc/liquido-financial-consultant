@@ -32,6 +32,10 @@ class LlmBadResponse(Exception):
     """Resposta ilegível; não adianta tentar de novo."""
 
 
+class LlmRejected(LlmBadResponse):
+    """O servidor recusou a chamada (chave, endereço ou modelo); a mensagem já é para o usuário."""
+
+
 class LlmClient(Protocol):
     def extract(self, image: bytes, mime: str) -> RawExtraction: ...
 
@@ -106,6 +110,10 @@ class OpenAICompatClient:
             raise LlmUnavailable("nenhum modelo carregado no servidor")
         if resp.status_code >= 500:
             raise LlmUnavailable(f"HTTP {resp.status_code}")
+        if resp.status_code in (401, 403):
+            raise LlmRejected(f"Servidor LLM recusou a chave (HTTP {resp.status_code})")
+        if resp.status_code == 404:
+            raise LlmRejected("Endereço ou modelo do LLM não encontrado (HTTP 404)")
         if resp.status_code >= 400:
             raise LlmBadResponse(f"HTTP {resp.status_code}: {resp.text[:200]}")
         try:

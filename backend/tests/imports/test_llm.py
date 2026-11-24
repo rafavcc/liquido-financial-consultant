@@ -119,3 +119,15 @@ def test_fake_client(tmp_path):
     assert fake.extract(PNG, "image/png").plataforma == "S"
     assert fake.extract(PNG + b"1", "image/png").plataforma == "D"
     assert fake.ping() is True
+
+
+def test_auth_and_not_found_are_distinct_non_retryable_errors():
+    from app.imports.llm import LlmRejected
+
+    for status, msg in ((401, "Servidor LLM recusou a chave (HTTP 401)"),
+                        (403, "Servidor LLM recusou a chave (HTTP 403)"),
+                        (404, "Endereço ou modelo do LLM não encontrado (HTTP 404)")):
+        client, bodies = make(lambda r, n, s=status: httpx.Response(s, text="x"))
+        with pytest.raises(LlmRejected, match=msg.replace("(", r"\(").replace(")", r"\)")):
+            client.extract(PNG, "image/png")
+        assert len(bodies) == 1
