@@ -68,3 +68,30 @@ test("dominado mostra o selo e o prazo de saída aparece", () => {
   expect(screen.getByText("Há opção melhor e mais curta")).toBeInTheDocument();
   expect(screen.getByText("Preso até 15/11/2028")).toBeInTheDocument();
 });
+
+test("não repete o vencimento quando o prazo de saída já mostra a mesma data", () => {
+  render(<ProductCard result={fixtureResult} hoje="2026-11-24" />);
+  expect(screen.getByText("Preso até 15/11/2028")).toBeInTheDocument();
+  expect(screen.queryByText("Vence 15/11/2028")).toBeNull();
+});
+
+test("com liquidez diária mostra o prazo e o vencimento", () => {
+  const diaria = { ...fixtureResult, prazo_saida_dias: 0, product: { ...fixtureResult.product, liquidez: "DIARIA" as const } };
+  render(<ProductCard result={diaria} hoje="2026-11-24" />);
+  expect(screen.getByText("Liquidez diária")).toBeInTheDocument();
+  expect(screen.getByText("Vence 15/11/2028")).toBeInTheDocument();
+});
+
+test("FGC em verde quando coberto e em vermelho quando sem cobertura; Tesouro sem a sigla", () => {
+  const { unmount } = render(<ProductCard result={fixtureResult} />);
+  expect(screen.getByText("FGC")).toHaveClass("text-pos");
+  unmount();
+  const cri = { ...fixtureResult, product: { ...fixtureResult.product, tipo: "CRI" as const, cobertura: "NENHUMA" as const } };
+  const { unmount: u2 } = render(<ProductCard result={cri} />);
+  expect(screen.getByText("FGC")).toHaveClass("text-neg");
+  expect(screen.getByTitle("Sem cobertura do FGC")).toBeInTheDocument();
+  u2();
+  const tesouro = { ...fixtureResult, product: { ...fixtureResult.product, tipo: "TESOURO_SELIC" as const, cobertura: "TESOURO" as const } };
+  render(<ProductCard result={tesouro} />);
+  expect(screen.queryByText("FGC")).toBeNull();
+});

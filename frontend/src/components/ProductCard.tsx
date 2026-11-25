@@ -22,8 +22,8 @@ const hojeIso = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-const Chip = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-4 ${className}`}>
+const Chip = ({ children, className = "", title }: { children: React.ReactNode; className?: string; title?: string }) => (
+  <span title={title} className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-4 ${className}`}>
     {children}
   </span>
 );
@@ -90,9 +90,17 @@ export function ProductCard({ result, rank, onSelect, isentoTypes, destaque = "v
         <Chip className="bg-subtle text-ink">{indexLabel(p.indexador, p.taxa)}</Chip>
         {prazo && <span className="text-muted">{prazo}</span>}
         {dominado && <Chip className="bg-warn-bg text-warn">Há opção melhor e mais curta</Chip>}
-        {p.data_vencimento && <span className="text-muted">Vence {formatDate(p.data_vencimento)}</span>}
+        {/* "Preso até"/"Venda antes de" já trazem a data do vencimento: não repetir. */}
+        {p.data_vencimento && !prazo?.includes(formatDate(p.data_vencimento)) && (
+          <span className="text-muted">Vence {formatDate(p.data_vencimento)}</span>
+        )}
         {isIsento(p.tipo, isentoTypes) && <Chip className="bg-pos-bg text-pos">Isento de IR</Chip>}
-        {p.cobertura === "FGC" && <Chip className="bg-subtle text-muted">FGC</Chip>}
+        {p.cobertura === "FGC" && (
+          <Chip className="bg-pos-bg text-pos" title="Coberto pelo FGC">FGC</Chip>
+        )}
+        {p.cobertura === "NENHUMA" && (
+          <Chip className="bg-neg-bg text-neg" title="Sem cobertura do FGC">FGC</Chip>
+        )}
         {!porTaxa && result.taxa_liquida_aa !== null && (
           <span className="ml-auto font-medium text-muted">≈ {formatPct(result.taxa_liquida_aa)} a.a. líquido</span>
         )}
