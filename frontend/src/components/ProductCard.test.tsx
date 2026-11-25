@@ -82,7 +82,7 @@ test("com liquidez diária mostra o prazo e o vencimento", () => {
   expect(screen.getByText("Vence 15/11/2028")).toBeInTheDocument();
 });
 
-test("FGC em verde quando coberto e em vermelho quando sem cobertura; Tesouro sem a sigla", () => {
+test("FGC em verde quando coberto e em vermelho quando sem cobertura; Tesouro com selo próprio", () => {
   const { unmount } = render(<ProductCard result={fixtureResult} />);
   expect(screen.getByText("FGC")).toHaveClass("text-pos");
   unmount();
@@ -94,4 +94,6 @@ test("FGC em verde quando coberto e em vermelho quando sem cobertura; Tesouro se
   const tesouro = { ...fixtureResult, product: { ...fixtureResult.product, tipo: "TESOURO_SELIC" as const, cobertura: "TESOURO" as const } };
   render(<ProductCard result={tesouro} />);
   expect(screen.queryByText("FGC")).toBeNull();
+  expect(screen.getByTitle("Garantido pelo Tesouro Nacional")).toHaveTextContent("Tesouro");
+  expect(screen.getByTitle("Garantido pelo Tesouro Nacional")).toHaveClass("text-pos");
 });

@@ -98,6 +98,9 @@ export function ProductCard({ result, rank, onSelect, isentoTypes, destaque = "v
         {p.cobertura === "FGC" && (
           <Chip className="bg-pos-bg text-pos" title="Coberto pelo FGC">FGC</Chip>
         )}
+        {p.cobertura === "TESOURO" && (
+          <Chip className="bg-pos-bg text-pos" title="Garantido pelo Tesouro Nacional">Tesouro</Chip>
+        )}
         {p.cobertura === "NENHUMA" && (
           <Chip className="bg-neg-bg text-neg" title="Sem cobertura do FGC">FGC</Chip>
         )}
