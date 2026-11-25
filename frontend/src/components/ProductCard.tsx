@@ -102,7 +102,7 @@ export function ProductCard({ result, rank, onSelect, isentoTypes, destaque = "v
           <Chip className="bg-pos-bg text-pos" title="Garantido pelo Tesouro Nacional">Tesouro</Chip>
         )}
         {p.cobertura === "NENHUMA" && (
-          <Chip className="bg-neg-bg text-neg" title="Sem cobertura do FGC">FGC</Chip>
+          <Chip className="bg-neg-bg text-neg" title="Sem cobertura do FGC">Sem FGC</Chip>
         )}
         {!porTaxa && result.taxa_liquida_aa !== null && (
           <span className="ml-auto font-medium text-muted">≈ {formatPct(result.taxa_liquida_aa)} a.a. líquido</span>

@@ -88,7 +88,8 @@ test("FGC em verde quando coberto e em vermelho quando sem cobertura; Tesouro co
   unmount();
   const cri = { ...fixtureResult, product: { ...fixtureResult.product, tipo: "CRI" as const, cobertura: "NENHUMA" as const } };
   const { unmount: u2 } = render(<ProductCard result={cri} />);
-  expect(screen.getByText("FGC")).toHaveClass("text-neg");
+  expect(screen.getByText("Sem FGC")).toHaveClass("text-neg");
+  expect(screen.queryByText("FGC")).toBeNull();
   expect(screen.getByTitle("Sem cobertura do FGC")).toBeInTheDocument();
   u2();
   const tesouro = { ...fixtureResult, product: { ...fixtureResult.product, tipo: "TESOURO_SELIC" as const, cobertura: "TESOURO" as const } };
